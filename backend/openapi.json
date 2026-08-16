@@ -1,0 +1,1649 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "",
+    "title": "standard public schema",
+    "version": "14.5"
+  },
+  "host": "gihitmxztbocbbdbgsqx.supabase.co:443",
+  "basePath": "/",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json",
+    "application/vnd.pgrst.object+json;nulls=stripped",
+    "application/vnd.pgrst.object+json",
+    "text/csv"
+  ],
+  "produces": [
+    "application/json",
+    "application/vnd.pgrst.object+json;nulls=stripped",
+    "application/vnd.pgrst.object+json",
+    "text/csv"
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "produces": [
+          "application/openapi+json",
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "OpenAPI description (this document)",
+        "tags": [
+          "Introspection"
+        ]
+      }
+    },
+    "/gateway_logs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.gateway_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.pump_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.water_level"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.battery"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.recorded_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/gateway_logs"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "gateway_logs"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.gateway_logs"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "gateway_logs"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.gateway_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.pump_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.water_level"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.battery"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.recorded_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "gateway_logs"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.gateway_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.pump_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.water_level"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.battery"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateway_logs.recorded_at"
+          },
+          {
+            "$ref": "#/parameters/body.gateway_logs"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "gateway_logs"
+        ]
+      }
+    },
+    "/nodes": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.nodes.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.crop_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/nodes"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "nodes"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.nodes"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "nodes"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.nodes.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.crop_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "nodes"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.nodes.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.crop_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.nodes.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.nodes"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/gateways": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.gateways.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.gateway_key"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.owner_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.last_seen"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/gateways"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "gateways"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.gateways"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "gateways"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.gateways.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.gateway_key"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.owner_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.last_seen"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "gateways"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.gateways.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.gateway_key"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.owner_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.gateways.last_seen"
+          },
+          {
+            "$ref": "#/parameters/body.gateways"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "gateways"
+        ]
+      }
+    },
+    "/commands": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.commands.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.command"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.executed_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/commands"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "commands"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.commands"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "commands"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.commands.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.command"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.executed_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "commands"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.commands.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.command"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.commands.executed_at"
+          },
+          {
+            "$ref": "#/parameters/body.commands"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "commands"
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.users.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/users"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.users"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.users.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.users.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.users"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/sensor_logs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.soil_moisture"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.temperature"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.humidity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.valve_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.battery"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.recorded_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/sensor_logs"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "sensor_logs"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.sensor_logs"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "sensor_logs"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.soil_moisture"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.temperature"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.humidity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.valve_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.battery"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.recorded_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "sensor_logs"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.gateway_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.node_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.soil_moisture"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.temperature"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.humidity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.valve_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.battery"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.sensor_logs.recorded_at"
+          },
+          {
+            "$ref": "#/parameters/body.sensor_logs"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "sensor_logs"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "gateway_logs": {
+      "required": [
+        "id",
+        "gateway_id"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "gateway_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "gateway_status": {
+          "format": "text",
+          "type": "string"
+        },
+        "pump_status": {
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "water_level": {
+          "format": "real",
+          "type": "number"
+        },
+        "battery": {
+          "format": "real",
+          "type": "number"
+        },
+        "recorded_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "nodes": {
+      "required": [
+        "id",
+        "node_id"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "node_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "gateway_id": {
+          "description": "Note:\nThis is a Foreign Key to `gateways.id`.<fk table='gateways' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "crop_name": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp without time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "gateways": {
+      "required": [
+        "id",
+        "gateway_id",
+        "gateway_key"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "gateway_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "gateway_key": {
+          "format": "text",
+          "type": "string"
+        },
+        "owner_id": {
+          "description": "Note:\nThis is a Foreign Key to `users.id`.<fk table='users' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "status": {
+          "default": "offline",
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp without time zone",
+          "type": "string"
+        },
+        "last_seen": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "commands": {
+      "required": [
+        "id",
+        "command"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "gateway_id": {
+          "description": "Note:\nThis is a Foreign Key to `gateways.id`.<fk table='gateways' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "node_id": {
+          "description": "Note:\nThis is a Foreign Key to `nodes.id`.<fk table='nodes' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "command": {
+          "format": "text",
+          "type": "string"
+        },
+        "status": {
+          "default": "pending",
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp without time zone",
+          "type": "string"
+        },
+        "executed_at": {
+          "format": "timestamp without time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "users": {
+      "required": [
+        "id",
+        "name",
+        "phone",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "name": {
+          "format": "text",
+          "type": "string"
+        },
+        "phone": {
+          "format": "text",
+          "type": "string"
+        },
+        "email": {
+          "format": "text",
+          "type": "string"
+        },
+        "role": {
+          "default": "farmer",
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp without time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "sensor_logs": {
+      "required": [
+        "id",
+        "gateway_id",
+        "node_id"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "gateway_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "node_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "soil_moisture": {
+          "format": "real",
+          "type": "number"
+        },
+        "temperature": {
+          "format": "real",
+          "type": "number"
+        },
+        "humidity": {
+          "format": "real",
+          "type": "number"
+        },
+        "valve_status": {
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "battery": {
+          "format": "real",
+          "type": "number"
+        },
+        "recorded_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "parameters": {
+    "preferParams": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "in": "header",
+      "type": "string"
+    },
+    "preferReturn": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "return=representation",
+        "return=minimal",
+        "return=none"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "preferCount": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "count=none"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "preferPost": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "return=representation",
+        "return=minimal",
+        "return=none",
+        "resolution=ignore-duplicates",
+        "resolution=merge-duplicates"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "select": {
+      "name": "select",
+      "description": "Filtering Columns",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "on_conflict": {
+      "name": "on_conflict",
+      "description": "On Conflict",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "order": {
+      "name": "order",
+      "description": "Ordering",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "range": {
+      "name": "Range",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "header",
+      "type": "string"
+    },
+    "rangeUnit": {
+      "name": "Range-Unit",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "default": "items",
+      "in": "header",
+      "type": "string"
+    },
+    "offset": {
+      "name": "offset",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "limit": {
+      "name": "limit",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.gateway_logs": {
+      "name": "gateway_logs",
+      "description": "gateway_logs",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/gateway_logs"
+      }
+    },
+    "rowFilter.gateway_logs.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateway_logs.gateway_id": {
+      "name": "gateway_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateway_logs.gateway_status": {
+      "name": "gateway_status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateway_logs.pump_status": {
+      "name": "pump_status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateway_logs.water_level": {
+      "name": "water_level",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateway_logs.battery": {
+      "name": "battery",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateway_logs.recorded_at": {
+      "name": "recorded_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.nodes": {
+      "name": "nodes",
+      "description": "nodes",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/nodes"
+      }
+    },
+    "rowFilter.nodes.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.nodes.node_id": {
+      "name": "node_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.nodes.gateway_id": {
+      "name": "gateway_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.nodes.crop_name": {
+      "name": "crop_name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.nodes.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.gateways": {
+      "name": "gateways",
+      "description": "gateways",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/gateways"
+      }
+    },
+    "rowFilter.gateways.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateways.gateway_id": {
+      "name": "gateway_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateways.gateway_key": {
+      "name": "gateway_key",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateways.owner_id": {
+      "name": "owner_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateways.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateways.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.gateways.last_seen": {
+      "name": "last_seen",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.commands": {
+      "name": "commands",
+      "description": "commands",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/commands"
+      }
+    },
+    "rowFilter.commands.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.commands.gateway_id": {
+      "name": "gateway_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.commands.node_id": {
+      "name": "node_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.commands.command": {
+      "name": "command",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.commands.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.commands.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.commands.executed_at": {
+      "name": "executed_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.users": {
+      "name": "users",
+      "description": "users",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/users"
+      }
+    },
+    "rowFilter.users.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.name": {
+      "name": "name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.phone": {
+      "name": "phone",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.email": {
+      "name": "email",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.role": {
+      "name": "role",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.sensor_logs": {
+      "name": "sensor_logs",
+      "description": "sensor_logs",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/sensor_logs"
+      }
+    },
+    "rowFilter.sensor_logs.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.gateway_id": {
+      "name": "gateway_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.node_id": {
+      "name": "node_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.soil_moisture": {
+      "name": "soil_moisture",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.temperature": {
+      "name": "temperature",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.humidity": {
+      "name": "humidity",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.valve_status": {
+      "name": "valve_status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.battery": {
+      "name": "battery",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.sensor_logs.recorded_at": {
+      "name": "recorded_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    }
+  },
+  "externalDocs": {
+    "description": "PostgREST Documentation",
+    "url": "https://postgrest.org/en/v14/references/api.html"
+  }
+}
