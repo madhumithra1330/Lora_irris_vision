@@ -130,7 +130,7 @@ export default function ConnectionDiagnostics() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-white/60">{t('status.mode')}</span>
-            <span className={`text-sm font-medium ${isDemoMode ? 'text-warning' : 'text-success'}`}>
+            <span className={`text-sm font-medium text-success`}>
               {isDemoMode ? t('status.demoMode') : t('status.liveMode')}
             </span>
           </div>

@@ -65,7 +65,6 @@ export default function AnalyticsPage() {
         <h1 className="text-xl font-bold font-[Outfit] text-white tracking-wide">{t('nav.analytics')}</h1>
         <p className="text-xs text-gray-400 mt-0.5">
           {t('analytics.sensorTrends', { name: activeNode?.cropName || t('analytics.field') })}
-          {isDemo && <span className="text-amber-500 ml-1">· {t('analytics.demoData')}</span>}
         </p>
       </div>
 

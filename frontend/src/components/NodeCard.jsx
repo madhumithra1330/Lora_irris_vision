@@ -59,11 +59,11 @@ export default function NodeCard({ node, index }) {
         </div>
       </div>
 
-      {/* Valve status bar */}
+      {/* Pump / Relay status bar */}
       <div className="flex items-center justify-between pt-2 border-t border-white/6">
         <div className="flex items-center gap-1.5 text-[11px]">
-          <span className={`w-2 h-2 rounded-full ${node.valve_status ? 'bg-success' : 'bg-white/20'}`} />
-          <span className="text-white/50">{node.valve_status ? t('node.valveOpen') : t('node.valveClosed')}</span>
+          <span className={`w-2 h-2 rounded-full ${node.valve_status || node.valveStatus ? 'bg-success' : 'bg-white/20'}`} />
+          <span className="text-white/50">{node.valve_status || node.valveStatus ? t('node.pumpOn', 'ON') : t('node.pumpOff', 'OFF')}</span>
         </div>
         <span className="text-[11px] text-white/30">{node.nodeId}</span>
       </div>

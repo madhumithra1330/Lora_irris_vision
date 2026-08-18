@@ -125,6 +125,120 @@ router.post('/', requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+/**
+ * GET /api/commands/pending
+ * Hardware endpoint for GOLD ESP32 to poll for pending commands.
+ * Query: ?gateway_id=LIVGW001
+ */
+router.get('/pending', async (req, res, next) => {
+  try {
+    const { gateway_id } = req.query;
+    const gatewaySecret = req.headers['x-gateway-secret'];
+
+    if (!gateway_id) {
+      return res.status(400).json({ success: false, error: 'gateway_id is required' });
+    }
+    
+    if (!gatewaySecret) {
+      return res.status(401).json({ success: false, error: 'x-gateway-secret header is required' });
+    }
+
+    const gateway = await db.getGatewayById(gateway_id);
+    if (!gateway) {
+      return res.status(404).json({ success: false, error: 'Gateway not found' });
+    }
+
+    if (gateway.secret !== gatewaySecret) {
+      return res.status(401).json({ success: false, error: 'Invalid gateway secret' });
+    }
+
+    const command = await db.getPendingCommand(gateway_id);
+    if (!command) {
+      return res.json({ success: true, data: null });
+    }
+    
+    // Update status to 'sent'
+    await db.updateCommand(command.id, 'sent');
+
+    res.json({
+      success: true,
+      data: {
+        commandId: command.id,
+        gatewayId: command.gateway_id,
+        nodeId: command.node_id,
+        command: command.command
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/commands/:commandId/ack
+ * Hardware endpoint for GOLD ESP32 to acknowledge command receipt.
+ */
+router.post('/:commandId/ack', async (req, res, next) => {
+  try {
+    const { commandId } = req.params;
+    const gatewaySecret = req.headers['x-gateway-secret'];
+    const status = req.body.status || 'acknowledged'; // support 'acknowledged' or 'failed'
+    
+    if (!gatewaySecret) {
+      return res.status(401).json({ success: false, error: 'x-gateway-secret header is required' });
+    }
+    
+    const command = await db.getCommandById(commandId);
+    if (!command) {
+      return res.status(404).json({ success: false, error: 'Command not found' });
+    }
+    
+    const gateway = await db.getGatewayById(command.gateway_id);
+    if (!gateway || gateway.secret !== gatewaySecret) {
+      return res.status(401).json({ success: false, error: 'Invalid gateway secret' });
+    }
+    
+    // Update command status to 'acknowledged' or 'failed'
+    const updatedCommand = await db.updateCommand(commandId, status);
+    if (!updatedCommand) {
+      return res.status(404).json({ success: false, error: 'Command not found' });
+    }
+    
+    // Add activity log for successful execution
+    if (status === 'acknowledged') {
+      let actionMessage = '';
+      let activityType = '';
+      
+      if (command.command === 'PUMP_ON' || command.command === 'PUMP_OFF') {
+        actionMessage = `Pump successfully turned ${command.command === 'PUMP_ON' ? 'ON' : 'OFF'} by hardware`;
+        activityType = 'pump';
+      } else if (command.command === 'VALVE_ON' || command.command === 'VALVE_OFF' || command.command === 'VALVE_OPEN' || command.command === 'VALVE_CLOSE') {
+        actionMessage = `Valve successfully turned ${command.command === 'VALVE_ON' || command.command === 'VALVE_OPEN' ? 'ON' : 'OFF'} by hardware`;
+        activityType = 'valve';
+      }
+      
+      if (actionMessage) {
+        await db.addActivity({
+          type: activityType,
+          gateway_id: command.gateway_id,
+          node_id: command.node_id,
+          message: actionMessage,
+          metadata: { command: command.command, status }
+        });
+      }
+    }
+
+    // Optionally emit socket update for the admin/dashboard
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`gateway:${updatedCommand.gateway_id}`).emit('command:ack', { commandId, status });
+      io.to('admin').emit('command:ack', { commandId, status });
+    }
+
+    res.json({ success: true, message: `Command ${status}` });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

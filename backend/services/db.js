@@ -193,6 +193,16 @@ export class DataStore {
     return data;
   }
 
+  async getCommandById(id) {
+    const { data, error } = await supabase
+      .from('commands')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) return null;
+    return data;
+  }
+
   async updateCommand(id, status) {
      const { data, error } = await supabase
       .from('commands')
@@ -212,6 +222,19 @@ export class DataStore {
       .order('created_at', { ascending: false });
     if (error) return [];
     return data || [];
+  }
+
+  async getPendingCommand(gatewayId) {
+    const { data, error } = await supabase
+      .from('commands')
+      .select('*')
+      .eq('gateway_id', gatewayId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(); // maybeSingle instead of single so it doesn't error on 0 rows
+    if (error) return null;
+    return data;
   }
 
   // ── Activity ──

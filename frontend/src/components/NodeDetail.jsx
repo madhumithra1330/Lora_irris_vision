@@ -18,10 +18,20 @@ export default function NodeDetail({ node, gatewayId, onCommand }) {
   const moisture = node.soilMoisture;
   const moistureStatus = moisture < 30 ? 'critical' : moisture < 60 ? 'warning' : 'ok';
   
-  const handleToggleValve = useCallback(async () => {
+  const handleTogglePump = useCallback(async () => {
     setIsLoading(true);
     setFeedback(null);
-    const targetCommand = node.valveStatus ? COMMANDS.VALVE_OFF : COMMANDS.VALVE_ON;
+    
+    // LIV001 (GOLD) uses PUMP_ON/OFF for its local relay
+    // LIV002 (SILVER) uses VALVE_ON/OFF for ESP-NOW dispatch
+    const isGoldNode = node.nodeId === 'LIV001';
+    
+    let targetCommand;
+    if (isGoldNode) {
+      targetCommand = node.valveStatus ? COMMANDS.PUMP_OFF : COMMANDS.PUMP_ON;
+    } else {
+      targetCommand = node.valveStatus ? COMMANDS.VALVE_OFF : COMMANDS.VALVE_ON;
+    }
 
     try {
       if (demoService.isDemoMode()) {
@@ -42,8 +52,8 @@ export default function NodeDetail({ node, gatewayId, onCommand }) {
             if (n.nodeId === node.nodeId) {
               return {
                 ...n,
-                valveStatus: targetCommand === COMMANDS.VALVE_ON,
-                valve_status: targetCommand === COMMANDS.VALVE_ON,
+                valveStatus: targetCommand === COMMANDS.PUMP_ON || targetCommand === COMMANDS.VALVE_ON,
+                valve_status: targetCommand === COMMANDS.PUMP_ON || targetCommand === COMMANDS.VALVE_ON,
               };
             }
             return n;
@@ -58,7 +68,7 @@ export default function NodeDetail({ node, gatewayId, onCommand }) {
         });
       }
 
-      setFeedback({ type: 'success', message: `${t('node.valveStatus')} ${node.valveStatus ? t('status.stopped').toLowerCase() : t('status.running').toLowerCase()} ${t('status.connected').toLowerCase()}` });
+      setFeedback({ type: 'success', message: `${t('node.pumpRelayStatus')} ${node.valveStatus ? t('status.stopped').toLowerCase() : t('status.running').toLowerCase()} ${t('status.connected').toLowerCase()}` });
       
       if (onCommand) {
         onCommand({
@@ -69,7 +79,7 @@ export default function NodeDetail({ node, gatewayId, onCommand }) {
         });
       }
     } catch (err) {
-      setFeedback({ type: 'error', message: err.response?.data?.message || t('errors.failedToggleValve') });
+      setFeedback({ type: 'error', message: err.response?.data?.message || t('errors.failedTogglePump') });
       
       if (onCommand) {
         onCommand({
@@ -154,30 +164,30 @@ export default function NodeDetail({ node, gatewayId, onCommand }) {
         </div>
       </div>
 
-      {/* Valve Control toggle */}
+      {/* Pump / Relay Control toggle */}
       <div className="pt-3 border-t border-white/6 space-y-3">
         <div className="flex justify-between items-center">
-          <span className="text-xs text-white/60">{t('node.valveStatus')}:</span>
+          <span className="text-xs text-white/60">{t('node.pumpRelayStatus', 'Pump / Relay Status')}:</span>
           <span className={`text-sm font-extrabold uppercase font-[Outfit] ${node.valveStatus ? 'text-success' : 'text-white/40'}`}>
-            {node.valveStatus ? t('node.valveOpen') : t('node.valveClosed')}
+            {node.valveStatus ? t('node.pumpOn', 'ON') : t('node.pumpOff', 'OFF')}
           </span>
         </div>
 
         <button
-          onClick={handleToggleValve}
+          onClick={handleTogglePump}
           disabled={isLoading}
           className={`w-full ${node.valveStatus ? 'btn btn-danger' : 'btn btn-primary'} text-sm min-h-[44px]`}
-          aria-label={node.valveStatus ? t('node.closeValve') : t('node.openValve')}
+          aria-label={node.valveStatus ? t('node.stopPump', 'Stop Pump') : t('node.startPump', 'Start Pump')}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="w-4 h-4 animate-spin-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              {node.valveStatus ? t('node.closingValve') : t('node.openingValve')}
+              {t('node.sending', 'Sending...')}
             </span>
           ) : (
-            node.valveStatus ? t('node.closeValve') : t('node.openValve')
+            node.valveStatus ? t('node.stopPump', 'Stop Pump') : t('node.startPump', 'Start Pump')
           )}
         </button>
 

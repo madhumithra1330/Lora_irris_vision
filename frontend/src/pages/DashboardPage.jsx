@@ -14,7 +14,6 @@ import WelcomeHeader from '../components/WelcomeHeader';
 import FarmOverviewCard from '../components/FarmOverviewCard';
 import GatewayOverview from '../components/GatewayOverview';
 import NodeDetail from '../components/NodeDetail';
-import PumpControl from '../components/PumpControl';
 import AIRecommendationCard from '../components/AIRecommendationCard';
 import RecentAlerts from '../components/RecentAlerts';
 
@@ -162,12 +161,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* 5. Pump Control */}
-      <PumpControl
-        gatewayId={selectedGateway?.gateway_id}
-        pumpStatus={dashboard?.gateway?.pumpStatus}
-        onCommand={handleCommand}
-      />
+
 
       {/* 6. AI Recommendation */}
       <AIRecommendationCard dashboard={dashboard} />
