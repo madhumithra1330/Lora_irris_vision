@@ -5,34 +5,31 @@
 #include "Adafruit_SHT31.h"
 #include <WiFi.h>
 #include <esp_now.h>
-#include <WiFiClientSecure.h>
 #include <WebServer.h>
 #include <HTTPClient.h>
 
 // =============================================================================
-// REQUIRED HARDWARE CONFIGURATION - YOU MUST FILL THESE BEFORE FLASHING
+// GOLD NODE  --  TTN SLAVE (liv-02)  +  WiFi MASTER / Gateway (LIV001)
 // =============================================================================
-const char* WIFI_SSID     = "hpt";
-const char* WIFI_PASSWORD = "praveen123";
+// Merges:
+//   - slave.txt (TTN LoRaWAN uplink/downlink for device liv-02)
+//   - wifi.txt "gold" section (ESP-NOW receiver, web server, HTTP POST)
+//
+// Unchanged: DevEUI/AppEUI/AppKey, LoRa pin map, LMIC config, 6-byte payload
+// structure, WiFi SSID/password, JSON field names/order.
+//
+// Changed: relay feedback now comes from a software state variable
+// (pumpStatus) instead of digitalRead(RELAY_PIN), per the RELAY REQUIREMENT.
+// Duplicate sensor-read functions and the duplicate SHT31 object from the
+// original two source files have been merged into single copies.
+// =============================================================================
 
-const char* BACKEND_URL = "https://liv-backend-24qz.onrender.com";
-const char* GATEWAY_ID = "LIVGW001";
-const char* GATEWAY_SECRET = "8F7K2M9Q";
-
-// =============================================================================
-// MUST REPLACE WITH ACTUAL 6-BYTE MAC ADDRESS OF SILVER NODE
-// Flash SILVER first, read its MAC from Serial output, then enter it here.
-// Example: if SILVER prints "MAC: E8:9F:6D:AA:BB:CC" -> {0xE8, 0x9F, 0x6D, 0xAA, 0xBB, 0xCC}
-// DO NOT use 00:00:00:00:00:00 or FF:FF:FF:FF:FF:FF in production.
-// =============================================================================
-uint8_t SILVER_MAC_ADDRESS[] = { 0xF6, 0x4A, 0x07, 0xD0, 0x7E, 0xD5, 0xB3, 0x70 };
-
-// =============================================================================
-// DYNAMIC URLs
-// =============================================================================
-String serverUrl = String(BACKEND_URL) + "/api/telemetry";
-String commandUrl = String(BACKEND_URL) + "/api/commands/pending?gateway_id=" + GATEWAY_ID;
-String ackUrlBase = String(BACKEND_URL) + "/api/commands/";
+// -----------------------------------------------------------------------------
+// 1. WIFI CREDENTIALS & BACKEND (unchanged from wifi.txt)
+// -----------------------------------------------------------------------------
+const char* ssid     = "hpt";
+const char* password = "praveen123";
+const char* serverUrl = "http://your-backend-server-ip:port/api/telemetry"; // Optional backend URL
 
 WebServer server(80);
 
@@ -100,34 +97,11 @@ struct_message node2Data;
 bool node2Online = false;
 unsigned long lastNode2Time = 0;
 
-// Command message to send to SILVER
-typedef struct command_message {
-    char nodeId[10];
-    char command[16];
-} command_message;
-command_message cmdData;
-
-volatile bool espNowSendComplete = false;
-volatile bool espNowSendSuccess = false;
-
-// ESP32 Core 3.x callback signature for ESP-NOW receive
-void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
-    if (len != sizeof(node2Data)) {
-        Serial.printf("[ESP-NOW] Warning: Received %d bytes, expected %d. Ignoring.\n", len, (int)sizeof(node2Data));
-        return;
-    }
+void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
     memcpy(&node2Data, incomingData, sizeof(node2Data));
     node2Online = true;
     lastNode2Time = millis();
-    Serial.printf("[ESP-NOW] Received data from SILVER (LIV002) | Soil: %d%% | Temp: %.1f C\n",
-                  node2Data.soilMoisture, node2Data.temperature);
-}
-
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-    espNowSendSuccess = (status == ESP_NOW_SEND_SUCCESS);
-    espNowSendComplete = true;
-    Serial.print(F("Last Packet Send Status: "));
-    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+    Serial.println(F("Received wireless data from Node 2 (SILVER)!"));
 }
 
 // -----------------------------------------------------------------------------
@@ -245,15 +219,10 @@ String getCombinedJson() {
         node2Online = false;
     }
 
-    // Generate uptime-based timestamp (ESP32 has no RTC; backend uses server time for last_seen)
-    unsigned long uptimeSec = millis() / 1000;
-    char uptimeStr[32];
-    snprintf(uptimeStr, sizeof(uptimeStr), "uptime:%lu", uptimeSec);
-
     String json = "{";
-    json += "\"gatewayId\":\"" + String(GATEWAY_ID) + "\",";
-    json += "\"gatewaySecret\":\"" + String(GATEWAY_SECRET) + "\",";
-    json += "\"timestamp\":\"" + String(uptimeStr) + "\",";
+    json += "\"gatewayId\":\"LIVGW001\",";
+    json += "\"gatewaySecret\":\"8F7K2M9Q\",";
+    json += "\"timestamp\":\"2026-06-11T15:30:00Z\",";
 
     json += "\"gateway\":{";
     json += "\"status\":\"online\",";
@@ -319,7 +288,7 @@ void setup() {
     // --- WiFi (gateway HTTP + local web server) ---
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false); // CRITICAL: keeps Wi-Fi radio awake for ESP-NOW reception
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(ssid, password);
     Serial.print(F("Connecting to Wi-Fi"));
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
@@ -328,44 +297,14 @@ void setup() {
     Serial.println(F("\nWi-Fi Connected & sleep disabled!"));
     Serial.print(F("-> Master IP Address for Browser: http://"));
     Serial.println(WiFi.localIP());
-    Serial.print(F("-> GOLD MAC Address (give this to SILVER): "));
+    Serial.print(F("-> Master MAC Address: "));
     Serial.println(WiFi.macAddress());
-    Serial.print(F("-> Wi-Fi Channel: "));
-    Serial.println(WiFi.channel());
 
-    // --- ESP-NOW receiver/sender (from/to SILVER) ---
+    // --- ESP-NOW receiver (from SILVER) ---
     if (esp_now_init() != ESP_OK) {
-        Serial.println(F("[ESP-NOW] Error initializing ESP-NOW"));
+        Serial.println(F("Error initializing ESP-NOW"));
     } else {
-        Serial.println(F("[ESP-NOW] Initialized successfully"));
         esp_now_register_recv_cb(OnDataRecv);
-        esp_now_register_send_cb(OnDataSent);
-        
-        // Validate SILVER MAC before adding peer
-        bool macIsZero = true;
-        bool macIsBroadcast = true;
-        for (int i = 0; i < 6; i++) {
-            if (SILVER_MAC_ADDRESS[i] != 0x00) macIsZero = false;
-            if (SILVER_MAC_ADDRESS[i] != 0xFF) macIsBroadcast = false;
-        }
-        if (macIsZero || macIsBroadcast) {
-            Serial.println(F("[ESP-NOW] WARNING: SILVER_MAC_ADDRESS is not configured!"));
-            Serial.println(F("[ESP-NOW] Flash SILVER first, read its MAC, then update SILVER_MAC_ADDRESS."));
-        }
-        
-        esp_now_peer_info_t peerInfo = {};
-        memcpy(peerInfo.peer_addr, SILVER_MAC_ADDRESS, 6);
-        peerInfo.channel = 0;
-        peerInfo.encrypt = false;
-        
-        esp_err_t addResult = esp_now_add_peer(&peerInfo);
-        if (addResult != ESP_OK){
-            Serial.printf("[ESP-NOW] Failed to add SILVER peer (error: %d)\n", addResult);
-        } else {
-            Serial.printf("[ESP-NOW] SILVER peer added: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                          SILVER_MAC_ADDRESS[0], SILVER_MAC_ADDRESS[1], SILVER_MAC_ADDRESS[2],
-                          SILVER_MAC_ADDRESS[3], SILVER_MAC_ADDRESS[4], SILVER_MAC_ADDRESS[5]);
-        }
     }
 
     // --- Web server ---
@@ -384,154 +323,19 @@ void setup() {
 // 12. LOOP -- non-blocking: services LMIC + WebServer + periodic HTTP POST
 // -----------------------------------------------------------------------------
 unsigned long lastPostTime = 0;
-unsigned long lastPollTime = 0;
-
 void loop() {
     os_runloop_once();      // LoRaWAN -- must run every iteration, no blocking delays here
     server.handleClient();  // Web server (live JSON endpoint)
 
-    // Wi-Fi reconnect logic
-    if (WiFi.status() != WL_CONNECTED) {
-        static unsigned long lastReconnectAttempt = 0;
-        if (millis() - lastReconnectAttempt >= 10000) {
-            lastReconnectAttempt = millis();
-            Serial.println(F("[WiFi] Disconnected. Attempting reconnect..."));
-            WiFi.disconnect();
-            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-        }
-    }
-
-    // Send HTTP POST every 2 seconds to backend server
+    // Optional: send HTTP POST every 2 seconds to your backend server
     if (millis() - lastPostTime >= 2000) {
         lastPostTime = millis();
 
-        if (WiFi.status() == WL_CONNECTED && String(BACKEND_URL).indexOf("YOUR-RENDER-BACKEND") == -1) {
-            WiFiClientSecure client;
-            client.setInsecure(); // DEVELOPMENT ONLY: Disable cert verification for Render
+        if (WiFi.status() == WL_CONNECTED && String(serverUrl).indexOf("your-backend") == -1) {
             HTTPClient http;
-            http.begin(client, serverUrl);
+            http.begin(serverUrl);
             http.addHeader("Content-Type", "application/json");
-            int httpCode = http.POST(getCombinedJson());
-            if (httpCode > 0) {
-                Serial.printf("[HTTP] Telemetry POST response: %d\n", httpCode);
-            } else {
-                Serial.printf("[HTTP] Telemetry POST failed: %s\n", http.errorToString(httpCode).c_str());
-            }
-            http.end();
-        }
-    }
-
-    // Command Polling every 5 seconds
-    if (millis() - lastPollTime >= 5000) {
-        lastPollTime = millis();
-
-        if (WiFi.status() == WL_CONNECTED && String(BACKEND_URL).indexOf("YOUR-RENDER-BACKEND") == -1) {
-            WiFiClientSecure client;
-            client.setInsecure(); // DEVELOPMENT ONLY: Disable cert verification
-            HTTPClient http;
-            http.begin(client, commandUrl);
-            http.addHeader("x-gateway-secret", GATEWAY_SECRET);
-            int httpCode = http.GET();
-            
-            if (httpCode == 200) {
-                String payload = http.getString();
-                if (payload.indexOf("\"data\":null") == -1 && payload.indexOf("\"commandId\":\"") > 0) {
-                    // We have a pending command
-                    int idIndex = payload.indexOf("\"commandId\":\"") + 13;
-                    int idEnd = payload.indexOf("\"", idIndex);
-                    String commandId = payload.substring(idIndex, idEnd);
-                    
-                    int cmdIndex = payload.indexOf("\"command\":\"") + 11;
-                    int cmdEnd = payload.indexOf("\"", cmdIndex);
-                    String commandStr = payload.substring(cmdIndex, cmdEnd);
-                    
-                    int nodeIndex = payload.indexOf("\"nodeId\":\"");
-                    String nodeIdStr = "";
-                    if (nodeIndex > 0) {
-                        nodeIndex += 10;
-                        int nodeEnd = payload.indexOf("\"", nodeIndex);
-                        nodeIdStr = payload.substring(nodeIndex, nodeEnd);
-                    }
-                    
-                    bool success = true;
-                    String errorMsg = "";
-                    
-                    // Execute command
-                    if (commandStr == "PUMP_ON" || commandStr == "PUMP_OFF") {
-                        Serial.print("Received Command: ");
-                        Serial.println(commandStr);
-                        Serial.println("Executing local pump command");
-                        
-                        if (commandStr == "PUMP_ON") {
-                            setRelay(true);
-                        } else {
-                            setRelay(false);
-                        }
-                    } else if (commandStr == "VALVE_ON" || commandStr == "VALVE_OPEN" || commandStr == "VALVE_OFF" || commandStr == "VALVE_CLOSE") {
-                        Serial.print("Received Command: ");
-                        Serial.print(commandStr);
-                        Serial.print(" for Node: ");
-                        Serial.println(nodeIdStr);
-
-                        if (nodeIdStr.length() == 0) {
-                            Serial.println(F("Error: VALVE command missing required nodeId"));
-                            success = false;
-                            errorMsg = "VALVE command missing required nodeId";
-                        } else {
-                            // Validate MAC configuration
-                        bool macIsZero = true;
-                        bool macIsBroadcast = true;
-                        for (int i = 0; i < 6; i++) {
-                            if (SILVER_MAC_ADDRESS[i] != 0x00) macIsZero = false;
-                            if (SILVER_MAC_ADDRESS[i] != 0xFF) macIsBroadcast = false;
-                        }
-                        
-                        if (macIsZero || macIsBroadcast) {
-                            Serial.println(F("Error: SILVER_MAC_ADDRESS is not properly configured. Cannot send valve command."));
-                            success = false;
-                            errorMsg = "Unconfigured SILVER MAC address";
-                        } else {
-                            if (commandStr == "VALVE_ON" || commandStr == "VALVE_OPEN") {
-                                strcpy(cmdData.command, "VALVE_ON");
-                            } else {
-                                strcpy(cmdData.command, "VALVE_OFF");
-                            }
-                            
-                            // Populate target nodeId
-                            nodeIdStr.toCharArray(cmdData.nodeId, sizeof(cmdData.nodeId));
-                            
-                            espNowSendComplete = false;
-                            espNowSendSuccess = false;
-                            
-                            if (esp_now_send(SILVER_MAC_ADDRESS, (uint8_t *) &cmdData, sizeof(cmdData)) == ESP_OK) {
-                                // Wait for hardware ACK (up to 100ms)
-                                unsigned long waitStart = millis();
-                                while (!espNowSendComplete && millis() - waitStart < 100) {
-                                    delay(1);
-                                }
-                                if (!espNowSendComplete || !espNowSendSuccess) {
-                                    success = false;
-                                    errorMsg = "ESP-NOW MAC delivery failed";
-                                }
-                            } else {
-                                success = false;
-                                errorMsg = "ESP-NOW send enqueue failed";
-                            }
-                        }
-                    }
-                    
-                    // Send ACK
-                    String ackUrl = String(ackUrlBase) + commandId + "/ack";
-                    HTTPClient ackHttp;
-                    ackHttp.begin(client, ackUrl);
-                    ackHttp.addHeader("Content-Type", "application/json");
-                    ackHttp.addHeader("x-gateway-secret", GATEWAY_SECRET);
-                    
-                    String ackPayload = success ? "{\"status\":\"acknowledged\"}" : "{\"status\":\"failed\",\"error\":\"" + errorMsg + "\"}";
-                    ackHttp.POST(ackPayload);
-                    ackHttp.end();
-                }
-            }
+            http.POST(getCombinedJson());
             http.end();
         }
     }
