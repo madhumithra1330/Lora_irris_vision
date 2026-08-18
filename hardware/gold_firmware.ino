@@ -7,6 +7,7 @@
 #include <esp_now.h>
 #include <WebServer.h>
 #include <HTTPClient.h>
+#include <time.h>
 
 // =============================================================================
 // GOLD NODE  --  TTN SLAVE (liv-02)  +  WiFi MASTER / Gateway (LIV001)
@@ -29,7 +30,12 @@
 // -----------------------------------------------------------------------------
 const char* ssid     = "hpt";
 const char* password = "praveen123";
-const char* serverUrl = "http://your-backend-server-ip:port/api/telemetry"; // Optional backend URL
+const char* serverUrl = "https://liv-backend-24qz.onrender.com/api/telemetry"; // Optional backend URL
+// NTP time configuration
+const char* NTP_SERVER_1 = "pool.ntp.org";
+const char* NTP_SERVER_2 = "time.nist.gov";
+const long GMT_OFFSET_SEC = 0;
+const int DAYLIGHT_OFFSET_SEC = 0;
 
 WebServer server(80);
 
@@ -201,6 +207,26 @@ void onEvent (ev_t ev) {
     }
 }
 
+String getCurrentTimestamp() {
+    struct tm timeinfo;
+
+    if (!getLocalTime(&timeinfo, 1000)) {
+        Serial.println(F("Warning: NTP time not synchronized"));
+        return "1970-01-01T00:00:00Z";
+    }
+
+    char timestamp[25];
+
+    strftime(
+        timestamp,
+        sizeof(timestamp),
+        "%Y-%m-%dT%H:%M:%SZ",
+        &timeinfo
+    );
+
+    return String(timestamp);
+}
+
 // -----------------------------------------------------------------------------
 // 10. JSON GENERATION -- exact format preserved, no fields added/removed/renamed
 // -----------------------------------------------------------------------------
@@ -222,7 +248,7 @@ String getCombinedJson() {
     String json = "{";
     json += "\"gatewayId\":\"LIVGW001\",";
     json += "\"gatewaySecret\":\"8F7K2M9Q\",";
-    json += "\"timestamp\":\"2026-06-11T15:30:00Z\",";
+    json += "\"timestamp\":\"" + getCurrentTimestamp() + "\",";
 
     json += "\"gateway\":{";
     json += "\"status\":\"online\",";
@@ -295,6 +321,35 @@ void setup() {
         Serial.print(F("."));
     }
     Serial.println(F("\nWi-Fi Connected & sleep disabled!"));
+    // --- NTP time synchronization ---
+    configTime(
+        GMT_OFFSET_SEC,
+        DAYLIGHT_OFFSET_SEC,
+        NTP_SERVER_1,
+        NTP_SERVER_2
+    );
+
+    Serial.print(F("Synchronizing time"));
+
+    struct tm timeinfo;
+    while (!getLocalTime(&timeinfo)) {
+        delay(500);
+        Serial.print(F("."));
+    }
+
+    Serial.println(F("\nTime synchronized!"));
+
+    char initialTimestamp[25];
+
+    strftime(
+        initialTimestamp,
+        sizeof(initialTimestamp),
+        "%Y-%m-%dT%H:%M:%SZ",
+        &timeinfo
+    );
+
+    Serial.print(F("Current UTC time: "));
+    Serial.println(initialTimestamp);
     Serial.print(F("-> Master IP Address for Browser: http://"));
     Serial.println(WiFi.localIP());
     Serial.print(F("-> Master MAC Address: "));
@@ -335,7 +390,9 @@ void loop() {
             HTTPClient http;
             http.begin(serverUrl);
             http.addHeader("Content-Type", "application/json");
-            http.POST(getCombinedJson());
+            int httpCode = http.POST(getCombinedJson());
+            Serial.print(F("Backend HTTP response: "));
+            Serial.println(httpCode);
             http.end();
         }
     }
