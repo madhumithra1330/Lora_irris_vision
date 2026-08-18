@@ -48,6 +48,7 @@ router.get('/:gatewayId', requireAuth, async (req, res, next) => {
       nodes: connectedNodes.map(node => ({
         nodeId: node.id,
         cropName: node.crop_name,
+        status: node.status || 'online',
         soil_moisture: node.soil_moisture,
         temperature: node.temperature,
         humidity: node.humidity,
