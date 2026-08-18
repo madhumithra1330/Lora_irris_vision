@@ -55,7 +55,9 @@ export default function ConnectionDiagnostics() {
       const { loadSession } = await import('../services/storageService');
       const session = await loadSession();
       if (session?.expires_at) {
-        const remaining = session.expires_at - Date.now();
+        const isMs = session.expires_at > 999999999999;
+        const expiryMs = isMs ? session.expires_at : session.expires_at * 1000;
+        const remaining = expiryMs - Date.now();
         setSessionInfo({
           valid: remaining > 0,
           remaining: remaining > 0 ? Math.round(remaining / 3600000) : 0,

@@ -6,7 +6,7 @@ import { loadSession, clearSession } from './storageService';
  * All API calls go through this — auth token is injected automatically.
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL || '',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',

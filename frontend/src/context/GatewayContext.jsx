@@ -32,20 +32,27 @@ export function GatewayProvider({ children }) {
         } else {
           gwList = await gatewayService.getMyGateways();
         }
-        setGateways(gwList || []);
+        
+        // Normalize gateway properties: map database field `id` to `gateway_id` and `name` to `gateway_name`
+        const mappedList = (gwList || []).map((g) => ({
+          ...g,
+          gateway_id: g.gateway_id || g.id,
+          gateway_name: g.gateway_name || g.name,
+        }));
+        setGateways(mappedList);
 
         // Auto-select logic
-        if (gwList && gwList.length > 0) {
+        if (mappedList.length > 0) {
           // Check for previously selected gateway
           const cached = await load(STORAGE_KEYS.SELECTED_GATEWAY);
           const cachedId = cached?.data;
-          const found = cachedId && gwList.find((g) => g.gateway_id === cachedId);
+          const found = cachedId && mappedList.find((g) => g.gateway_id === cachedId);
 
           if (found) {
             setSelectedGateway(found);
           } else {
-            setSelectedGateway(gwList[0]);
-            await save(STORAGE_KEYS.SELECTED_GATEWAY, gwList[0].gateway_id);
+            setSelectedGateway(mappedList[0]);
+            await save(STORAGE_KEYS.SELECTED_GATEWAY, mappedList[0].gateway_id);
           }
         }
       } catch (err) {
@@ -53,9 +60,14 @@ export function GatewayProvider({ children }) {
         // Try loading from cache
         const cached = await load(STORAGE_KEYS.GATEWAYS);
         if (cached?.data) {
-          setGateways(cached.data);
-          if (cached.data.length > 0) {
-            setSelectedGateway(cached.data[0]);
+          const mappedCached = cached.data.map((g) => ({
+            ...g,
+            gateway_id: g.gateway_id || g.id,
+            gateway_name: g.gateway_name || g.name,
+          }));
+          setGateways(mappedCached);
+          if (mappedCached.length > 0) {
+            setSelectedGateway(mappedCached[0]);
           }
         }
       } finally {
@@ -82,7 +94,12 @@ export function GatewayProvider({ children }) {
     if (demoService.isDemoMode()) return;
     try {
       const gwList = await gatewayService.getMyGateways();
-      setGateways(gwList || []);
+      const mappedList = (gwList || []).map((g) => ({
+        ...g,
+        gateway_id: g.gateway_id || g.id,
+        gateway_name: g.gateway_name || g.name,
+      }));
+      setGateways(mappedList);
     } catch (err) {
       console.error('[GatewayContext] Refresh failed:', err);
     }

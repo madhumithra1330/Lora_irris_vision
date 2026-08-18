@@ -10,7 +10,7 @@ const listeners = new Set();
 export function connect(url) {
   if (socket?.connected) return;
 
-  const socketUrl = url || import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+  const socketUrl = url || import.meta.env.VITE_SOCKET_URL || window.location.origin;
   socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
     reconnection: true,
