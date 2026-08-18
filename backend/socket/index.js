@@ -2,7 +2,14 @@ import { Server } from 'socket.io';
 import { db } from '../services/db.js';
 
 export function initSocketServer(httpServer) {
-  const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+  let allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+  allowedOrigins = allowedOrigins.map(origin => origin.replace(/\/$/, ''));
+  if (!allowedOrigins.includes('https://lora-irris-vision.vercel.app')) {
+    allowedOrigins.push('https://lora-irris-vision.vercel.app');
+  }
+  if (!allowedOrigins.includes('http://localhost:5173')) {
+    allowedOrigins.push('http://localhost:5173');
+  }
   
   const io = new Server(httpServer, {
     cors: {

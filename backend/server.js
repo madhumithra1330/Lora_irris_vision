@@ -21,7 +21,14 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // CORS configuration
-const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+let allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+allowedOrigins = allowedOrigins.map(origin => origin.replace(/\/$/, ''));
+if (!allowedOrigins.includes('https://lora-irris-vision.vercel.app')) {
+  allowedOrigins.push('https://lora-irris-vision.vercel.app');
+}
+if (!allowedOrigins.includes('http://localhost:5173')) {
+  allowedOrigins.push('http://localhost:5173');
+}
 
 app.use(cors({
   origin: allowedOrigins,
