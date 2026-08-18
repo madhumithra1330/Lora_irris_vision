@@ -6,18 +6,25 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <WiFiClientSecure.h>
+#include <WebServer.h>
+#include <HTTPClient.h>
 
 // =============================================================================
 // REQUIRED HARDWARE CONFIGURATION - YOU MUST FILL THESE BEFORE FLASHING
 // =============================================================================
-const char* WIFI_SSID     = "hpt
+const char* WIFI_SSID     = "hpt";
 const char* WIFI_PASSWORD = "praveen123";
 
 const char* BACKEND_URL = "https://liv-backend-24qz.onrender.com";
 const char* GATEWAY_ID = "LIVGW001";
 const char* GATEWAY_SECRET = "8F7K2M9Q";
 
-// MUST REPLACE WITH ACTUAL MAC ADDRESS OF SILVER NODE
+// =============================================================================
+// MUST REPLACE WITH ACTUAL 6-BYTE MAC ADDRESS OF SILVER NODE
+// Flash SILVER first, read its MAC from Serial output, then enter it here.
+// Example: if SILVER prints "MAC: E8:9F:6D:AA:BB:CC" -> {0xE8, 0x9F, 0x6D, 0xAA, 0xBB, 0xCC}
+// DO NOT use 00:00:00:00:00:00 or FF:FF:FF:FF:FF:FF in production.
+// =============================================================================
 uint8_t SILVER_MAC_ADDRESS[] = { 0xF6, 0x4A, 0x07, 0xD0, 0x7E, 0xD5, 0xB3, 0x70 };
 
 // =============================================================================
@@ -103,11 +110,17 @@ command_message cmdData;
 volatile bool espNowSendComplete = false;
 volatile bool espNowSendSuccess = false;
 
-void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
+// ESP32 Core 3.x callback signature for ESP-NOW receive
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
+    if (len != sizeof(node2Data)) {
+        Serial.printf("[ESP-NOW] Warning: Received %d bytes, expected %d. Ignoring.\n", len, (int)sizeof(node2Data));
+        return;
+    }
     memcpy(&node2Data, incomingData, sizeof(node2Data));
     node2Online = true;
     lastNode2Time = millis();
-    Serial.println(F("Received wireless data from Node 2 (SILVER)!"));
+    Serial.printf("[ESP-NOW] Received data from SILVER (LIV002) | Soil: %d%% | Temp: %.1f C\n",
+                  node2Data.soilMoisture, node2Data.temperature);
 }
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -232,10 +245,15 @@ String getCombinedJson() {
         node2Online = false;
     }
 
+    // Generate uptime-based timestamp (ESP32 has no RTC; backend uses server time for last_seen)
+    unsigned long uptimeSec = millis() / 1000;
+    char uptimeStr[32];
+    snprintf(uptimeStr, sizeof(uptimeStr), "uptime:%lu", uptimeSec);
+
     String json = "{";
     json += "\"gatewayId\":\"" + String(GATEWAY_ID) + "\",";
     json += "\"gatewaySecret\":\"" + String(GATEWAY_SECRET) + "\",";
-    json += "\"timestamp\":\"2026-06-11T15:30:00Z\",";
+    json += "\"timestamp\":\"" + String(uptimeStr) + "\",";
 
     json += "\"gateway\":{";
     json += "\"status\":\"online\",";
@@ -310,23 +328,43 @@ void setup() {
     Serial.println(F("\nWi-Fi Connected & sleep disabled!"));
     Serial.print(F("-> Master IP Address for Browser: http://"));
     Serial.println(WiFi.localIP());
-    Serial.print(F("-> Master MAC Address: "));
+    Serial.print(F("-> GOLD MAC Address (give this to SILVER): "));
     Serial.println(WiFi.macAddress());
+    Serial.print(F("-> Wi-Fi Channel: "));
+    Serial.println(WiFi.channel());
 
     // --- ESP-NOW receiver/sender (from/to SILVER) ---
     if (esp_now_init() != ESP_OK) {
-        Serial.println(F("Error initializing ESP-NOW"));
+        Serial.println(F("[ESP-NOW] Error initializing ESP-NOW"));
     } else {
+        Serial.println(F("[ESP-NOW] Initialized successfully"));
         esp_now_register_recv_cb(OnDataRecv);
         esp_now_register_send_cb(OnDataSent);
+        
+        // Validate SILVER MAC before adding peer
+        bool macIsZero = true;
+        bool macIsBroadcast = true;
+        for (int i = 0; i < 6; i++) {
+            if (SILVER_MAC_ADDRESS[i] != 0x00) macIsZero = false;
+            if (SILVER_MAC_ADDRESS[i] != 0xFF) macIsBroadcast = false;
+        }
+        if (macIsZero || macIsBroadcast) {
+            Serial.println(F("[ESP-NOW] WARNING: SILVER_MAC_ADDRESS is not configured!"));
+            Serial.println(F("[ESP-NOW] Flash SILVER first, read its MAC, then update SILVER_MAC_ADDRESS."));
+        }
         
         esp_now_peer_info_t peerInfo = {};
         memcpy(peerInfo.peer_addr, SILVER_MAC_ADDRESS, 6);
         peerInfo.channel = 0;
         peerInfo.encrypt = false;
         
-        if (esp_now_add_peer(&peerInfo) != ESP_OK){
-            Serial.println(F("Failed to add SILVER peer"));
+        esp_err_t addResult = esp_now_add_peer(&peerInfo);
+        if (addResult != ESP_OK){
+            Serial.printf("[ESP-NOW] Failed to add SILVER peer (error: %d)\n", addResult);
+        } else {
+            Serial.printf("[ESP-NOW] SILVER peer added: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                          SILVER_MAC_ADDRESS[0], SILVER_MAC_ADDRESS[1], SILVER_MAC_ADDRESS[2],
+                          SILVER_MAC_ADDRESS[3], SILVER_MAC_ADDRESS[4], SILVER_MAC_ADDRESS[5]);
         }
     }
 
@@ -352,7 +390,18 @@ void loop() {
     os_runloop_once();      // LoRaWAN -- must run every iteration, no blocking delays here
     server.handleClient();  // Web server (live JSON endpoint)
 
-    // Optional: send HTTP POST every 2 seconds to your backend server
+    // Wi-Fi reconnect logic
+    if (WiFi.status() != WL_CONNECTED) {
+        static unsigned long lastReconnectAttempt = 0;
+        if (millis() - lastReconnectAttempt >= 10000) {
+            lastReconnectAttempt = millis();
+            Serial.println(F("[WiFi] Disconnected. Attempting reconnect..."));
+            WiFi.disconnect();
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+        }
+    }
+
+    // Send HTTP POST every 2 seconds to backend server
     if (millis() - lastPostTime >= 2000) {
         lastPostTime = millis();
 
@@ -362,7 +411,12 @@ void loop() {
             HTTPClient http;
             http.begin(client, serverUrl);
             http.addHeader("Content-Type", "application/json");
-            http.POST(getCombinedJson());
+            int httpCode = http.POST(getCombinedJson());
+            if (httpCode > 0) {
+                Serial.printf("[HTTP] Telemetry POST response: %d\n", httpCode);
+            } else {
+                Serial.printf("[HTTP] Telemetry POST failed: %s\n", http.errorToString(httpCode).c_str());
+            }
             http.end();
         }
     }

@@ -51,18 +51,22 @@ router.post('/', async (req, res, next) => {
     // We assume the ESP32 sends the raw ultrasonic distance reading as waterLevel.
     const waterLevelPercentage = distanceToPercentage(gateway.waterLevel);
 
-    // 4. Validate Gateway metrics
-    if (typeof gateway.pumpStatus !== 'boolean' || typeof gateway.battery !== 'number') {
-       return res.status(400).json({ success: false, error: 'Invalid gateway metrics' });
+    // 5. Use server-side timestamp for last_seen/recorded_at
+    // The ESP32 has no RTC and may send an uptime marker instead of ISO timestamp.
+    // Always use server time for accurate record-keeping.
+    const serverTimestamp = new Date().toISOString();
+    let parsedTimestamp = serverTimestamp;
+    if (timestamp && !isNaN(new Date(timestamp).getTime()) && !String(timestamp).startsWith('uptime:')) {
+      parsedTimestamp = new Date(timestamp).toISOString();
     }
 
-    // 5. Update Gateway state
+    // 6. Update Gateway state
     const gwUpdate = {
       status: gateway.status || 'online',
       pump_status: gateway.pumpStatus,
       water_level: waterLevelPercentage,
       battery: gateway.battery,
-      last_seen: new Date(timestamp).toISOString()
+      last_seen: serverTimestamp
     };
     
     // Check for pump status change to log activity
@@ -84,7 +88,7 @@ router.post('/', async (req, res, next) => {
       pump_status: gateway.pumpStatus,
       water_level: waterLevelPercentage,
       battery: gateway.battery,
-      recorded_at: new Date(timestamp).toISOString()
+      recorded_at: serverTimestamp
     }]);
 
     // 7. Update Nodes and Insert Sensor History
@@ -107,7 +111,7 @@ router.post('/', async (req, res, next) => {
           humidity: nodeData.humidity,
           valve_status: nodeData.valveStatus,
           battery: nodeData.battery,
-          last_seen: new Date(timestamp).toISOString()
+          last_seen: serverTimestamp
         };
 
         // Check for valve status change to log activity
@@ -130,7 +134,7 @@ router.post('/', async (req, res, next) => {
           humidity: nodeData.humidity,
           valve_status: nodeData.valveStatus,
           battery: nodeData.battery,
-          recorded_at: new Date(timestamp).toISOString()
+          recorded_at: serverTimestamp
         });
 
         // Emit Socket.IO node update

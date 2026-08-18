@@ -125,6 +125,8 @@ router.post('/', requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
 /**
  * GET /api/commands/pending
  * Hardware endpoint for GOLD ESP32 to poll for pending commands.

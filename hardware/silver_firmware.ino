@@ -100,27 +100,30 @@ typedef struct command_message {
     char command[16];
 } command_message;
 
-void OnCommandRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
+// ESP32 Core 3.x callback signature for ESP-NOW receive
+void OnCommandRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
     if (len == sizeof(command_message)) {
         command_message cmdData;
         memcpy(&cmdData, incomingData, sizeof(cmdData));
-        Serial.print(F("Received Command via ESP-NOW: "));
+        Serial.print(F("[ESP-NOW] Received Command: "));
         Serial.print(cmdData.command);
         Serial.print(F(" for Node: "));
         Serial.println(cmdData.nodeId);
         
         if (strcmp(cmdData.nodeId, NODE_ID) != 0) {
-            Serial.println(F("Command ignored: wrong node"));
+            Serial.println(F("[ESP-NOW] Command ignored: wrong node"));
             return; // Do not execute valve relay
         }
         
         if (strcmp(cmdData.command, "VALVE_ON") == 0 || strcmp(cmdData.command, "VALVE_OPEN") == 0) {
             digitalWrite(RELAY_PIN, HIGH);
-            Serial.println(F("Valve Relay turned ON"));
+            Serial.println(F("[RELAY] Valve Relay turned ON"));
         } else if (strcmp(cmdData.command, "VALVE_OFF") == 0 || strcmp(cmdData.command, "VALVE_CLOSE") == 0) {
             digitalWrite(RELAY_PIN, LOW);
-            Serial.println(F("Valve Relay turned OFF"));
+            Serial.println(F("[RELAY] Valve Relay turned OFF"));
         }
+    } else {
+        Serial.printf("[ESP-NOW] Unexpected data length: %d bytes (expected cmd: %d)\n", len, (int)sizeof(command_message));
     }
 }
 
@@ -270,6 +273,10 @@ void setup() {
         Serial.print(F("."));
     }
     Serial.println(F("\nSILVER Wi-Fi connected & sleep disabled!"));
+    Serial.print(F("-> SILVER MAC Address (give this to GOLD): "));
+    Serial.println(WiFi.macAddress());
+    Serial.print(F("-> Wi-Fi Channel: "));
+    Serial.println(WiFi.channel());
 
     // --- ESP-NOW sender/receiver (to/from GOLD) ---
     if (esp_now_init() != ESP_OK) {
@@ -284,9 +291,12 @@ void setup() {
         peerInfo.encrypt = false;
 
         if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-            Serial.println(F("Failed to add GOLD peer"));
+            Serial.println(F("[ESP-NOW] Failed to add GOLD peer"));
         } else {
-            Serial.println(F("SILVER ESP-NOW broadcasting active!"));
+            Serial.printf("[ESP-NOW] GOLD peer added: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                          masterAddress[0], masterAddress[1], masterAddress[2],
+                          masterAddress[3], masterAddress[4], masterAddress[5]);
+            Serial.println(F("[ESP-NOW] SILVER broadcasting active!"));
         }
     }
 
@@ -302,6 +312,17 @@ void setup() {
 // -----------------------------------------------------------------------------
 void loop() {
     os_runloop_once(); // LoRaWAN -- must run every iteration, no blocking delays here
+
+    // Wi-Fi reconnect logic (ESP-NOW depends on Wi-Fi radio being initialized)
+    if (WiFi.status() != WL_CONNECTED) {
+        static unsigned long lastReconnectAttempt = 0;
+        if (millis() - lastReconnectAttempt >= 10000) {
+            lastReconnectAttempt = millis();
+            Serial.println(F("[WiFi] Disconnected. Attempting reconnect..."));
+            WiFi.disconnect();
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+        }
+    }
 
     if (millis() - lastEspNowSend >= ESPNOW_INTERVAL_MS) {
         lastEspNowSend = millis();
