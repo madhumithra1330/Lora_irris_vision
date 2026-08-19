@@ -7,54 +7,8 @@ export const otpStore = new Map();
 
 export class DataStore {
   constructor() {
-    this.memoryGateways = new Map([
-      ['LIVGW001', {
-        id: 'LIVGW001',
-        name: 'Patel Farm - North Block',
-        secret: '8F7K2M9Q',
-        farmer_id: null,
-        status: 'online',
-        pump_status: false,
-        water_level: 80,
-        battery: 95,
-        firmware: '2.1.0',
-        last_seen: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }]
-    ]);
-
-    this.memoryNodes = new Map([
-      ['LIV001', {
-        id: 'LIV001',
-        gateway_id: 'LIVGW001',
-        crop_name: 'Tomato Block A',
-        soil_moisture: 45,
-        temperature: 28.5,
-        humidity: 65,
-        valve_status: false,
-        battery: 90,
-        status: 'online',
-        last_seen: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }],
-      ['LIV002', {
-        id: 'LIV002',
-        gateway_id: 'LIVGW001',
-        crop_name: 'Wheat Field B',
-        soil_moisture: 50,
-        temperature: 27.0,
-        humidity: 60,
-        valve_status: false,
-        battery: 88,
-        status: 'online',
-        last_seen: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }]
-    ]);
-
+    this.memoryGateways = new Map();
+    this.memoryNodes = new Map();
     this.memorySensorHistory = [];
     this.memoryGatewayHistory = [];
     this.memoryCommands = new Map();
@@ -187,6 +141,49 @@ export class DataStore {
     const memTime = new Date(memGw.last_seen || memGw.updated_at || 0).getTime();
     const dbTime = new Date(dbGw.last_seen || dbGw.updated_at || 0).getTime();
     return memTime >= dbTime ? memGw : dbGw;
+  }
+
+  async claimGateway(gatewayId, farmerId) {
+    const updates = { farmer_id: farmerId, updated_at: new Date().toISOString() };
+    const existing = this.memoryGateways.get(gatewayId);
+    if (existing) {
+      this.memoryGateways.set(gatewayId, { ...existing, ...updates });
+    }
+    try {
+      const { data, error } = await supabase.from('gateways').update(updates).eq('id', gatewayId).select().single();
+      if (!error && data) {
+        this.memoryGateways.set(gatewayId, data);
+        return data;
+      }
+    } catch (_) {}
+    return this.memoryGateways.get(gatewayId) || null;
+  }
+
+  async createGateway(gatewayData) {
+    const newGw = {
+      id: gatewayData.id,
+      name: gatewayData.name || `Gateway ${gatewayData.id}`,
+      secret: gatewayData.secret,
+      farmer_id: gatewayData.farmer_id || null,
+      status: gatewayData.status || 'online',
+      pump_status: gatewayData.pump_status !== undefined ? gatewayData.pump_status : false,
+      water_level: gatewayData.water_level !== undefined ? gatewayData.water_level : 0,
+      battery: gatewayData.battery !== undefined ? gatewayData.battery : 100,
+      firmware: gatewayData.firmware || '1.0.0',
+      location: gatewayData.location || null,
+      last_seen: gatewayData.last_seen || new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    this.memoryGateways.set(newGw.id, newGw);
+    try {
+      const { data, error } = await supabase.from('gateways').upsert(newGw).select().single();
+      if (!error && data) {
+        this.memoryGateways.set(data.id, data);
+        return data;
+      }
+    } catch (_) {}
+    return newGw;
   }
 
   async updateGateway(id, updates) {

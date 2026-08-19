@@ -7,22 +7,6 @@ const router = express.Router();
 const TANK_HEIGHT_CM = Number(process.env.TANK_HEIGHT_CM) || 200;
 const TANK_MIN_DISTANCE_CM = Number(process.env.TANK_MIN_DISTANCE_CM) || 10;
 
-// Stale timeout for online/offline determination (45 seconds = 3x firmware transmission rate)
-const STALE_TIMEOUT_MS = 45 * 1000;
-
-/**
- * Computes live online/offline status based on lastSeen without mutating lastSeen.
- */
-function computeStatus(lastSeen, reportedStatus) {
-  if (!lastSeen) return 'offline';
-  const lastSeenMs = new Date(lastSeen).getTime();
-  if (isNaN(lastSeenMs)) return 'offline';
-  if (Date.now() - lastSeenMs > STALE_TIMEOUT_MS) {
-    return 'offline';
-  }
-  return reportedStatus === 'offline' ? 'offline' : 'online';
-}
-
 /**
  * Converts a measured distance (cm) to a percentage (0-100)
  */
@@ -65,32 +49,28 @@ router.get('/', async (req, res, next) => {
       });
     }
 
-    const gwStatus = computeStatus(gw.last_seen, gw.status);
-
     res.json({
       success: true,
       data: {
         gatewayId: gw.id,
-        gatewayName: gw.name,
+        gatewayName: gw.name || 'Central Node',
         timestamp: gw.last_seen || gw.updated_at,
         gateway: {
-          status: gwStatus,
+          status: gw.status || 'online',
           pumpStatus: gw.pump_status !== undefined ? gw.pump_status : false,
           waterLevel: gw.water_level !== undefined ? gw.water_level : 0,
-          battery: gw.battery !== undefined ? gw.battery : 100,
+          battery: gw.battery !== undefined ? gw.battery : 0,
           lastSeen: gw.last_seen
         },
         nodes: nodes.map(n => ({
           nodeId: n.id,
-          cropName: n.crop_name,
-          status: computeStatus(n.last_seen, n.status),
+          cropName: n.crop_name || (n.id === 'LIV001' ? 'Tomato Field' : 'Rice/Corn Field'),
+          status: n.status || 'online',
           soilMoisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
-          soil_moisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
           temperature: n.temperature !== undefined ? n.temperature : 0,
           humidity: n.humidity !== undefined ? n.humidity : 0,
           valveStatus: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
-          valve_status: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
-          battery: n.battery !== undefined ? n.battery : 100,
+          battery: n.battery !== undefined ? n.battery : 0,
           lastSeen: n.last_seen
         }))
       }
@@ -113,32 +93,29 @@ router.get('/:gatewayId', async (req, res, next) => {
     }
 
     const nodes = await db.getNodesByGateway(gatewayId);
-    const gwStatus = computeStatus(gw.last_seen, gw.status);
 
     res.json({
       success: true,
       data: {
         gatewayId: gw.id,
-        gatewayName: gw.name,
+        gatewayName: gw.name || 'Central Node',
         timestamp: gw.last_seen || gw.updated_at,
         gateway: {
-          status: gwStatus,
+          status: gw.status || 'online',
           pumpStatus: gw.pump_status !== undefined ? gw.pump_status : false,
           waterLevel: gw.water_level !== undefined ? gw.water_level : 0,
-          battery: gw.battery !== undefined ? gw.battery : 100,
+          battery: gw.battery !== undefined ? gw.battery : 0,
           lastSeen: gw.last_seen
         },
         nodes: nodes.map(n => ({
           nodeId: n.id,
-          cropName: n.crop_name,
-          status: computeStatus(n.last_seen, n.status),
+          cropName: n.crop_name || (n.id === 'LIV001' ? 'Tomato Field' : 'Rice/Corn Field'),
+          status: n.status || 'online',
           soilMoisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
-          soil_moisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
           temperature: n.temperature !== undefined ? n.temperature : 0,
           humidity: n.humidity !== undefined ? n.humidity : 0,
           valveStatus: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
-          valve_status: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
-          battery: n.battery !== undefined ? n.battery : 100,
+          battery: n.battery !== undefined ? n.battery : 0,
           lastSeen: n.last_seen
         }))
       }
@@ -264,7 +241,7 @@ router.post('/', async (req, res, next) => {
           existingNode = await db.createNode({
             id: nodeData.nodeId,
             gateway_id: gatewayId,
-            crop_name: nodeData.nodeId === 'LIV001' ? 'Tomato Block A' : nodeData.nodeId === 'LIV002' ? 'Wheat Field B' : `Field ${nodeData.nodeId}`,
+            crop_name: nodeData.cropName || (nodeData.nodeId === 'LIV001' ? 'Tomato Field' : nodeData.nodeId === 'LIV002' ? 'Rice/Corn Field' : `Field ${nodeData.nodeId}`),
             soil_moisture: nodeData.soilMoisture,
             temperature: nodeData.temperature,
             humidity: nodeData.humidity,
