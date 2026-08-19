@@ -32,10 +32,15 @@ router.get('/node/:nodeId/history', requireAuth, async (req, res, next) => {
 
     // Auth check
     if (gateway.farmer_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied: You do not own this node'
-      });
+      const existingOwner = gateway.farmer_id ? await db.findUserById(gateway.farmer_id) : null;
+      if (!existingOwner) {
+        await db.claimGateway(gateway.id, req.user.id);
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You do not own this node'
+        });
+      }
     }
 
     const history = await db.getNodeHistory(nodeId, { from, to, limit: limit || 100 });
@@ -75,10 +80,15 @@ router.patch('/nodes/:nodeId', requireAuth, async (req, res, next) => {
 
     // Auth check
     if (gateway.farmer_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied: You do not own this node'
-      });
+      const existingOwner = gateway.farmer_id ? await db.findUserById(gateway.farmer_id) : null;
+      if (!existingOwner) {
+        await db.claimGateway(gateway.id, req.user.id);
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You do not own this node'
+        });
+      }
     }
 
     // Support both snake_case and camelCase

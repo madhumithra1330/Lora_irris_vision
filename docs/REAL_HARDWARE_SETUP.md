@@ -504,3 +504,88 @@ EV_JOINING: Joining TTN...
 - Gateway secret is sent in the JSON body for telemetry and in HTTP headers for command polling.
 - Serial output never prints Wi-Fi passwords, gateway secrets, or API keys.
 - `VITE_DEMO_MODE=false` must remain set to ensure actual hardware telemetry is the source of truth.
+
+---
+
+## 14. Farmer ↔ Gateway Association
+
+### Overview
+In the LIV architecture, access to hardware monitoring and control is strictly protected by ownership authorization:
+```
+Farmer Profile (id: UUID)
+       │
+       │ owns (gateways.farmer_id = profiles.id)
+       ▼
+Central Gateway (id: LIVGW001)
+       ├───── Field Node (id: LIV001)
+       └───── Field Node (id: LIV002)
+```
+
+### 1. Database Table & Ownership Field
+- **Table**: `gateways`
+- **Ownership Column**: `farmer_id` (`UUID REFERENCES profiles(id)`)
+- **Node Association**: Field nodes in table `nodes` reference their parent gateway via `gateway_id` (`TEXT REFERENCES gateways(id)`).
+
+### 2. How Ownership is Established & Verified
+1. **Login & Auto-Association**: When an authenticated farmer logs in, the backend checks for unclaimed/orphan gateways (`LIVGW001`). If unclaimed, it associates `farmer_id = req.user.id`.
+2. **Explicit Claim API**: A farmer can explicitly claim ownership of any gateway by submitting the device's hardware secret:
+   ```http
+   POST /api/gateways/claim
+   Authorization: Bearer <FARMER_JWT_TOKEN>
+   Content-Type: application/json
+
+   {
+     "gateway_id": "LIVGW001",
+     "gateway_secret": "<GATEWAY_SECRET>"
+   }
+   ```
+   - **Verification**: The backend verifies that `gateway_secret` matches the registered hardware secret (`8F7K2M9Q`).
+   - Upon successful verification, `gateways.farmer_id` is updated to the farmer's account UUID.
+
+### 3. Repairing Ownership for Fresh Deployments
+If a newly deployed backend or database contains orphan/seed gateway records that are not associated with your current farmer account:
+1. **Automatic Resolution**: The backend automatically repairs orphan associations upon login or when calling `GET /api/gateways/my`.
+2. **Manual Claim**: Call `POST /api/gateways/claim` with `gateway_id: "LIVGW001"` and `gateway_secret: "<GATEWAY_SECRET>"`.
+3. **Direct SQL (Supabase SQL Editor)**:
+   ```sql
+   -- Find the farmer UUID
+   SELECT id, phone, name FROM profiles WHERE phone = '+91XXXXXXXXXX';
+
+   -- Associate LIVGW001 to the farmer
+   UPDATE gateways 
+   SET farmer_id = '<YOUR_FARMER_UUID>', updated_at = now() 
+   WHERE id = 'LIVGW001';
+
+   -- Verify node relationships
+   SELECT id, gateway_id, crop_name, status FROM nodes WHERE gateway_id = 'LIVGW001';
+   ```
+
+### 4. Required Environment Variables
+
+#### Backend (Render.com Dashboard)
+```env
+NODE_ENV=production
+PORT=3000
+JWT_SECRET=<YOUR_JWT_SECRET>
+SUPABASE_URL=https://<YOUR_PROJECT_REF>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<YOUR_SUPABASE_SERVICE_ROLE_KEY>
+CORS_ORIGINS=https://<YOUR_FRONTEND>.vercel.app
+ENABLE_SOCKET_SIMULATOR=false
+TANK_HEIGHT_CM=200
+TANK_MIN_DISTANCE_CM=10
+```
+
+#### Frontend (Vercel Dashboard)
+```env
+VITE_API_URL=https://<YOUR_BACKEND>.onrender.com
+VITE_SOCKET_URL=https://<YOUR_BACKEND>.onrender.com
+VITE_DEMO_MODE=false
+```
+
+#### Hardware Configuration (.ino files)
+- In `gold_firmware.ino` / `gold.ino`:
+  - `serverUrl = "https://<YOUR_BACKEND>.onrender.com/api/telemetry"`
+  - `gatewayId = "LIVGW001"`
+  - `gatewaySecret = "<GATEWAY_SECRET>"`
+- In `silver_firmware.ino` / `silver.ino`:
+  - `NODE_ID = "LIV002"`

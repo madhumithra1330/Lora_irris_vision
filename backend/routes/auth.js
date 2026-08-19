@@ -71,6 +71,20 @@ router.post('/verify-otp', async (req, res, next) => {
       isNewUser = true;
     }
 
+    // Ensure primary hardware gateway LIVGW001 is associated if unclaimed or orphan
+    try {
+      const gw = await db.getGatewayById('LIVGW001');
+      if (gw) {
+        let existingOwner = null;
+        if (gw.farmer_id) {
+          existingOwner = await db.findUserById(gw.farmer_id);
+        }
+        if (!gw.farmer_id || !existingOwner) {
+          await db.claimGateway('LIVGW001', user.id);
+        }
+      }
+    } catch (_) {}
+
     // Generate JWT token
     const expiresIn = 30 * 24 * 60 * 60; // 30 days
     const access_token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn });

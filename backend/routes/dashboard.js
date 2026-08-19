@@ -14,36 +14,26 @@ router.get('/:gatewayId', requireAuth, async (req, res, next) => {
 
     let gw = await db.getGatewayById(gatewayId);
     if (!gw) {
-      if (gatewayId === 'LIVGW001') {
-        try {
-          gw = await db.createGateway({
-            id: 'LIVGW001',
-            name: 'Patel Farm - North Block',
-            secret: '8F7K2M9Q',
-            farmer_id: req.user.id,
-            status: 'online',
-            pump_status: false,
-            water_level: 80,
-            battery: 95
-          });
-        } catch (e) {
-          // ignore
-        }
-      }
-      if (!gw) {
-        return res.status(404).json({
-          success: false,
-          error: 'Central Node (Gateway) not found'
-        });
-      }
+      return res.status(404).json({
+        success: false,
+        error: 'Central Node (Gateway) not found'
+      });
     }
 
-    // Auth check: allow owner, admin, or unclaimed gateways
-    if (gw.farmer_id && gw.farmer_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied: You do not own this gateway'
-      });
+    // Ownership check & orphan resolution
+    if (gw.farmer_id !== req.user.id && req.user.role !== 'admin') {
+      const existingOwner = gw.farmer_id ? await db.findUserById(gw.farmer_id) : null;
+      if (!existingOwner) {
+        // Orphan gateway from initial seeding or deleted account -> claim for the authenticated farmer
+        await db.claimGateway(gatewayId, req.user.id);
+        gw = await db.getGatewayById(gatewayId);
+      } else {
+        // Legitimate gateway belonging to another registered farmer
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: You do not own this gateway'
+        });
+      }
     }
 
     const connectedNodes = await db.getNodesByGateway(gatewayId);
@@ -53,26 +43,29 @@ router.get('/:gatewayId', requireAuth, async (req, res, next) => {
       gateway: {
         gatewayId: gw.id,
         gatewayName: gw.name,
-        status: gw.status,
+        status: gw.status || 'online',
         lastSeen: gw.last_seen
       },
       gatewayMetrics: {
-        pumpStatus: gw.pump_status,
-        waterLevel: gw.water_level,
-        battery: gw.battery,
-        gatewayStatus: gw.status,
-        recordedAt: gw.updated_at
+        pumpStatus: gw.pump_status !== undefined ? gw.pump_status : false,
+        waterLevel: gw.water_level !== undefined ? gw.water_level : 0,
+        battery: gw.battery !== undefined ? gw.battery : 100,
+        gatewayStatus: gw.status || 'online',
+        recordedAt: gw.updated_at || gw.last_seen
       },
       nodes: connectedNodes.map(node => ({
         nodeId: node.id,
         cropName: node.crop_name,
         status: node.status || 'online',
-        soil_moisture: node.soil_moisture,
-        temperature: node.temperature,
-        humidity: node.humidity,
-        valve_status: node.valve_status,
-        battery: node.battery,
-        recorded_at: node.updated_at
+        soilMoisture: node.soil_moisture !== undefined ? node.soil_moisture : node.soilMoisture,
+        soil_moisture: node.soil_moisture !== undefined ? node.soil_moisture : node.soilMoisture,
+        temperature: node.temperature !== undefined ? node.temperature : 0,
+        humidity: node.humidity !== undefined ? node.humidity : 0,
+        valveStatus: node.valve_status !== undefined ? node.valve_status : node.valveStatus,
+        valve_status: node.valve_status !== undefined ? node.valve_status : node.valveStatus,
+        battery: node.battery !== undefined ? node.battery : 100,
+        recordedAt: node.updated_at || node.last_seen,
+        recorded_at: node.updated_at || node.last_seen
       })),
       nodeCount: connectedNodes.length
     };
