@@ -7,22 +7,27 @@
 #include <esp_now.h>
 
 // =============================================================================
-// SILVER NODE  --  TTN MASTER (liv-01)  +  WiFi SLAVE / Sensor Node
+// SILVER NODE (silver_f)  --  TTN MASTER (liv-01)  +  WiFi SLAVE / Sensor Node
 // =============================================================================
-// Merges:
-//   - master.txt (TTN LoRaWAN uplink/downlink for device liv-01)
-//   - wifi.txt "silver" section (ESP-NOW sender to GOLD)
+// This file is the confirmed-working silver_without_backend.ino, with two
+// changes:
 //
-// Unchanged: DevEUI/AppEUI/AppKey, LoRa pin map, LMIC config, 6-byte payload
-// structure, WiFi SSID/password, GOLD's ESP-NOW MAC address, relay pin logic.
+// 1. masterAddress now targets GOLD's real MAC address as provided:
+//        SILVER's own MAC : C4:DD:57:67:12:E0
+//        GOLD's MAC        : C4:DD:57:67:14:1C   <-- ESP-NOW target
+//    The previous masterAddress value in this file (C4:DD:57:67:12:E0) was
+//    actually SILVER's own MAC, not GOLD's -- ESP-NOW packets were being
+//    addressed to the wrong device.
 //
-// Changed: the original loop() used a blocking delay(2000) around the
-// ESP-NOW send. That would stall LMIC's os_runloop_once() and break
-// LoRaWAN timing once TTN and WiFi run on the same core, so it has been
-// replaced with a non-blocking millis()-based timer. Duplicate sensor-read
-// functions and the duplicate SHT31 object have been merged into single
-// copies. A battery pin/read (from wifi.txt) was added since the ESP-NOW
-// struct needs it; the TTN payload is unaffected.
+// 2. OnDataSent()'s signature is updated for ESP32 Arduino Core 3.x
+//    (esp32-libs 3.3.10), which changed esp_now_send_cb_t's first argument
+//    from `const uint8_t *mac_addr` to `const wifi_tx_info_t *tx_info`.
+//    This is a hard compile-time requirement -- the old signature will not
+//    build against this core (see gold_f.ino header for the full callback
+//    signature root-cause note, which applies identically here).
+//
+// No LoRaWAN keys, pin assignments, WiFi credentials, or send/receive logic
+// were otherwise changed.
 // =============================================================================
 
 // -----------------------------------------------------------------------------
@@ -31,7 +36,7 @@
 const char* ssid     = "hpt";
 const char* password = "praveen123";
 
-uint8_t masterAddress[] = {0xC4, 0xDD, 0x57, 0x67, 0x12, 0xE0}; // GOLD's MAC -- unchanged
+uint8_t masterAddress[] = {0xC4, 0xDD, 0x57, 0x67, 0x14, 0x1C}; // GOLD's MAC -- corrected
 
 // -----------------------------------------------------------------------------
 // 2. PIN DEFINITIONS (unchanged)
@@ -45,7 +50,7 @@ uint8_t masterAddress[] = {0xC4, 0xDD, 0x57, 0x67, 0x12, 0xE0}; // GOLD's MAC --
 Adafruit_SHT31 sht31 = Adafruit_SHT31();
 
 // -----------------------------------------------------------------------------
-// 3. LORAWAN KEYS (FOR DEVICE: liv-01) -- UNCHANGED from master.txt
+// 3. LORAWAN KEYS (FOR DEVICE: liv-01) -- UNCHANGED, do not edit
 // -----------------------------------------------------------------------------
 static const u1_t PROGMEM APPEUI[8] = { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01 };
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8); }
@@ -70,7 +75,7 @@ static osjob_t sendjob;
 const unsigned TX_INTERVAL = 30; // Uplink interval in seconds
 
 // -----------------------------------------------------------------------------
-// 5. ESP-NOW: STRUCT + SEND CALLBACK (from wifi.txt silver section)
+// 5. ESP-NOW: STRUCT + SEND CALLBACK (unchanged)
 // -----------------------------------------------------------------------------
 typedef struct struct_message {
     char nodeId[10];
@@ -84,7 +89,7 @@ typedef struct struct_message {
 
 struct_message myData;
 
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
     if (status == ESP_NOW_SEND_SUCCESS) {
         Serial.println(F("ESP-NOW Delivery: SUCCESS"));
     } else {
@@ -135,7 +140,7 @@ void do_send(osjob_t* j) {
         uint16_t distanceCm = readDistanceCm();
         uint8_t relayState = digitalRead(RELAY_PIN); // unchanged -- SILVER relay behavior preserved as-is
 
-        // Build 6-byte payload -- identical layout to master.txt/slave.txt
+        // Build 6-byte payload -- identical layout, unchanged
         byte payload[6];
         payload[0] = temp;
         payload[1] = hum;
@@ -153,7 +158,7 @@ void do_send(osjob_t* j) {
 }
 
 // -----------------------------------------------------------------------------
-// 8. TTN EVENT & DOWNLINK HANDLER (unchanged from master.txt)
+// 8. TTN EVENT & DOWNLINK HANDLER (unchanged)
 // -----------------------------------------------------------------------------
 void onEvent (ev_t ev) {
     switch(ev) {
@@ -189,7 +194,7 @@ void onEvent (ev_t ev) {
 }
 
 // -----------------------------------------------------------------------------
-// 9. ESP-NOW SEND -- non-blocking replacement for the original delay(2000) loop
+// 9. ESP-NOW SEND -- non-blocking, millis()-based timer (unchanged)
 // -----------------------------------------------------------------------------
 unsigned long lastEspNowSend = 0;
 const unsigned long ESPNOW_INTERVAL_MS = 2000;
@@ -206,7 +211,10 @@ void sendEspNowUpdate() {
     myData.valveStatus = digitalRead(RELAY_PIN);
     myData.battery = readBatteryPct();
 
-    esp_now_send(masterAddress, (uint8_t *) &myData, sizeof(myData));
+    esp_err_t result = esp_now_send(masterAddress, (uint8_t *) &myData, sizeof(myData));
+    if (result != ESP_OK) {
+        Serial.println(F("esp_now_send() call failed to queue packet"));
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -236,6 +244,8 @@ void setup() {
         Serial.print(F("."));
     }
     Serial.println(F("\nSILVER Wi-Fi connected & sleep disabled!"));
+    Serial.print(F("-> SILVER MAC Address: "));
+    Serial.println(WiFi.macAddress());
 
     // --- ESP-NOW sender (to GOLD) ---
     if (esp_now_init() != ESP_OK) {

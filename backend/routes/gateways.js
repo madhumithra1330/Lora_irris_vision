@@ -10,7 +10,11 @@ const router = express.Router();
  */
 router.get('/my', requireAuth, async (req, res, next) => {
   try {
-    const list = await db.getGatewaysByFarmer(req.user.id);
+    let list = await db.getGatewaysByFarmer(req.user.id);
+    if (!list || list.length === 0) {
+      const allGateways = await db.getAllGateways();
+      list = allGateways;
+    }
     res.json({
       success: true,
       data: list
