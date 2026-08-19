@@ -33,40 +33,40 @@ export default function NodeDetail({ node, gatewayId, onCommand }) {
       targetCommand = node.valveStatus ? COMMANDS.VALVE_OFF : COMMANDS.VALVE_ON;
     }
 
+    const effectiveGatewayId = gatewayId || 'LIVGW001';
+
     try {
       if (demoService.isDemoMode()) {
         demoService.toggleValve(node.nodeId, targetCommand);
       } else {
         await sendCommand({
-          gateway_id: gatewayId,
+          gateway_id: effectiveGatewayId,
           node_id: node.nodeId,
           command: targetCommand,
         });
       }
 
       // Optimistic update of cache for instant state change
-      if (gatewayId) {
-        queryClient.setQueryData(['dashboard', gatewayId], (prev) => {
-          if (!prev?.data) return prev;
-          const updatedNodes = (prev.data.nodes || []).map((n) => {
-            if (n.nodeId === node.nodeId) {
-              return {
-                ...n,
-                valveStatus: targetCommand === COMMANDS.PUMP_ON || targetCommand === COMMANDS.VALVE_ON,
-                valve_status: targetCommand === COMMANDS.PUMP_ON || targetCommand === COMMANDS.VALVE_ON,
-              };
-            }
-            return n;
-          });
-          return {
-            ...prev,
-            data: {
-              ...prev.data,
-              nodes: updatedNodes,
-            },
-          };
+      queryClient.setQueryData(['dashboard', effectiveGatewayId], (prev) => {
+        if (!prev?.data) return prev;
+        const updatedNodes = (prev.data.nodes || []).map((n) => {
+          if (n.nodeId === node.nodeId) {
+            return {
+              ...n,
+              valveStatus: targetCommand === COMMANDS.PUMP_ON || targetCommand === COMMANDS.VALVE_ON,
+              valve_status: targetCommand === COMMANDS.PUMP_ON || targetCommand === COMMANDS.VALVE_ON,
+            };
+          }
+          return n;
         });
-      }
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            nodes: updatedNodes,
+          },
+        };
+      });
 
       setFeedback({ type: 'success', message: `${t('node.pumpRelayStatus')} ${node.valveStatus ? t('status.stopped').toLowerCase() : t('status.running').toLowerCase()} ${t('status.connected').toLowerCase()}` });
       
