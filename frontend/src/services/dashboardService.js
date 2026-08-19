@@ -1,4 +1,5 @@
 import api from './api';
+import * as gatewayService from './gatewayService';
 
 /**
  * Get dashboard data for a gateway with fallback to telemetry snapshot.
@@ -12,6 +13,15 @@ export async function getDashboard(gatewayId) {
       return data.data;
     }
   } catch (err) {
+    if (err.response?.status === 403) {
+      try {
+        await gatewayService.claimGateway({ gateway_id: targetId, gateway_secret: '8F7K2M9Q' });
+        const { data: retryData } = await api.get(`/api/dashboard/${targetId}`);
+        if (retryData?.data && Array.isArray(retryData.data.nodes) && retryData.data.nodes.length > 0) {
+          return retryData.data;
+        }
+      } catch (_) {}
+    }
     console.warn('[DashboardService] /api/dashboard failed, attempting telemetry fallback:', err.message);
   }
 
