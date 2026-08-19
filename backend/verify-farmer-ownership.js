@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'liv-secret-key-12345';
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://127.0.0.1:3000';
 
 async function runVerification() {
   console.log('====================================================');

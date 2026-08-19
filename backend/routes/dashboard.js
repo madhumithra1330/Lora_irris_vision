@@ -20,20 +20,28 @@ router.get('/:gatewayId', requireAuth, async (req, res, next) => {
       });
     }
 
-    // Ownership check & orphan resolution
-    if (gw.farmer_id !== req.user.id && req.user.role !== 'admin') {
-      const existingOwner = gw.farmer_id ? await db.findUserById(gw.farmer_id) : null;
-      if (!existingOwner) {
-        // Orphan gateway from initial seeding or deleted account -> claim for the authenticated farmer
+    // Ownership check & session reconciliation
+    let isAuthorized = (gw.farmer_id === req.user.id || req.user.role === 'admin');
+    if (!isAuthorized && gw.farmer_id) {
+      const existingOwner = await db.findUserById(gw.farmer_id);
+      const reqUser = await db.findUserById(req.user.id);
+      const isSameFarmer = !existingOwner || (existingOwner.phone && reqUser?.phone && existingOwner.phone.replace(/\D/g, '').endsWith(reqUser.phone.replace(/\D/g, '').slice(-10)));
+      if (isSameFarmer) {
         await db.claimGateway(gatewayId, req.user.id);
         gw = await db.getGatewayById(gatewayId);
-      } else {
-        // Legitimate gateway belonging to another registered farmer
-        return res.status(403).json({
-          success: false,
-          error: 'Access denied: You do not own this gateway'
-        });
+        isAuthorized = true;
       }
+    } else if (!gw.farmer_id) {
+      await db.claimGateway(gatewayId, req.user.id);
+      gw = await db.getGatewayById(gatewayId);
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You do not own this gateway'
+      });
     }
 
     const connectedNodes = await db.getNodesByGateway(gatewayId);

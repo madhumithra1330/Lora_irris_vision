@@ -65,12 +65,17 @@ export class DataStore {
 
   // ── User lookups ──
   async findUserByPhone(phone) {
+    if (!phone) return null;
+    const cleanPhone = phone.replace(/\D/g, '');
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('phone', phone).single();
-      if (!error && data) return data;
+      const { data, error } = await supabase.from('profiles').select('*');
+      if (!error && data && data.length > 0) {
+        const found = data.find(u => u.phone && (u.phone === phone || u.phone.replace(/\D/g, '').endsWith(cleanPhone.slice(-10))));
+        if (found) return found;
+      }
     } catch (_) {}
     for (const u of this.memoryUsers.values()) {
-      if (u.phone === phone) return u;
+      if (u.phone && (u.phone === phone || u.phone.replace(/\D/g, '').endsWith(cleanPhone.slice(-10)))) return u;
     }
     return null;
   }

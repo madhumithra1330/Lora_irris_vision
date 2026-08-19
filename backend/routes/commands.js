@@ -29,16 +29,25 @@ router.post('/', requireAuth, async (req, res, next) => {
     }
 
     // Auth check
-    if (gateway.farmer_id !== req.user.id && req.user.role !== 'admin') {
-      const existingOwner = gateway.farmer_id ? await db.findUserById(gateway.farmer_id) : null;
-      if (!existingOwner) {
+    let isAuthorized = (gateway.farmer_id === req.user.id || req.user.role === 'admin');
+    if (!isAuthorized && gateway.farmer_id) {
+      const existingOwner = await db.findUserById(gateway.farmer_id);
+      const reqUser = await db.findUserById(req.user.id);
+      const isSameFarmer = !existingOwner || (existingOwner.phone && reqUser?.phone && existingOwner.phone.replace(/\D/g, '').endsWith(reqUser.phone.replace(/\D/g, '').slice(-10)));
+      if (isSameFarmer) {
         await db.claimGateway(gateway.id, req.user.id);
-      } else {
-        return res.status(403).json({
-          success: false,
-          error: 'Access denied: You do not own this gateway'
-        });
+        isAuthorized = true;
       }
+    } else if (!gateway.farmer_id) {
+      await db.claimGateway(gateway.id, req.user.id);
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You do not own this gateway'
+      });
     }
 
     let targetNode = null;

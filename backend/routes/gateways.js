@@ -15,11 +15,10 @@ router.get('/my', requireAuth, async (req, res, next) => {
       // Check if primary hardware gateway LIVGW001 is unclaimed or orphan
       const gw = await db.getGatewayById('LIVGW001');
       if (gw) {
-        let existingOwner = null;
-        if (gw.farmer_id) {
-          existingOwner = await db.findUserById(gw.farmer_id);
-        }
-        if (!gw.farmer_id || !existingOwner) {
+        const existingOwner = gw.farmer_id ? await db.findUserById(gw.farmer_id) : null;
+        const reqUser = await db.findUserById(req.user.id);
+        const isSameFarmer = !existingOwner || (existingOwner.phone && reqUser?.phone && existingOwner.phone.replace(/\D/g, '').endsWith(reqUser.phone.replace(/\D/g, '').slice(-10)));
+        if (!gw.farmer_id || isSameFarmer) {
           await db.claimGateway('LIVGW001', req.user.id);
           list = await db.getGatewaysByFarmer(req.user.id);
         }
