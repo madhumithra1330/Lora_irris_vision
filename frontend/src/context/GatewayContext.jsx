@@ -41,11 +41,23 @@ export function GatewayProvider({ children }) {
         }));
 
         if (mappedList.length === 0) {
-          mappedList = [{
-            gateway_id: 'LIVGW001',
-            gateway_name: 'Patel Farm - North Block',
-            status: 'online'
-          }];
+          try {
+            await gatewayService.claimGateway({ gateway_id: 'LIVGW001', gateway_secret: '8F7K2M9Q' });
+            gwList = await gatewayService.getMyGateways();
+            mappedList = (gwList || []).map((g) => ({
+              ...g,
+              gateway_id: g.gateway_id || g.id,
+              gateway_name: g.gateway_name || g.name,
+            }));
+          } catch (_) {}
+          
+          if (mappedList.length === 0) {
+            mappedList = [{
+              gateway_id: 'LIVGW001',
+              gateway_name: 'Patel Farm - North Block',
+              status: 'online'
+            }];
+          }
         }
 
         setGateways(mappedList);
