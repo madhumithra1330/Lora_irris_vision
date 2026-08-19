@@ -7,6 +7,22 @@ const router = express.Router();
 const TANK_HEIGHT_CM = Number(process.env.TANK_HEIGHT_CM) || 200;
 const TANK_MIN_DISTANCE_CM = Number(process.env.TANK_MIN_DISTANCE_CM) || 10;
 
+// Stale timeout for online/offline determination (45 seconds = 3x firmware transmission rate)
+const STALE_TIMEOUT_MS = 45 * 1000;
+
+/**
+ * Computes live online/offline status based on lastSeen without mutating lastSeen.
+ */
+function computeStatus(lastSeen, reportedStatus) {
+  if (!lastSeen) return 'offline';
+  const lastSeenMs = new Date(lastSeen).getTime();
+  if (isNaN(lastSeenMs)) return 'offline';
+  if (Date.now() - lastSeenMs > STALE_TIMEOUT_MS) {
+    return 'offline';
+  }
+  return reportedStatus === 'offline' ? 'offline' : 'online';
+}
+
 /**
  * Converts a measured distance (cm) to a percentage (0-100)
  */
@@ -49,6 +65,8 @@ router.get('/', async (req, res, next) => {
       });
     }
 
+    const gwStatus = computeStatus(gw.last_seen, gw.status);
+
     res.json({
       success: true,
       data: {
@@ -56,7 +74,7 @@ router.get('/', async (req, res, next) => {
         gatewayName: gw.name,
         timestamp: gw.last_seen || gw.updated_at,
         gateway: {
-          status: gw.status || 'online',
+          status: gwStatus,
           pumpStatus: gw.pump_status !== undefined ? gw.pump_status : false,
           waterLevel: gw.water_level !== undefined ? gw.water_level : 0,
           battery: gw.battery !== undefined ? gw.battery : 100,
@@ -65,11 +83,13 @@ router.get('/', async (req, res, next) => {
         nodes: nodes.map(n => ({
           nodeId: n.id,
           cropName: n.crop_name,
-          status: n.status || 'online',
-          soilMoisture: n.soil_moisture !== undefined ? n.soil_moisture : 0,
+          status: computeStatus(n.last_seen, n.status),
+          soilMoisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
+          soil_moisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
           temperature: n.temperature !== undefined ? n.temperature : 0,
           humidity: n.humidity !== undefined ? n.humidity : 0,
-          valveStatus: n.valve_status !== undefined ? n.valve_status : false,
+          valveStatus: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
+          valve_status: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
           battery: n.battery !== undefined ? n.battery : 100,
           lastSeen: n.last_seen
         }))
@@ -93,6 +113,7 @@ router.get('/:gatewayId', async (req, res, next) => {
     }
 
     const nodes = await db.getNodesByGateway(gatewayId);
+    const gwStatus = computeStatus(gw.last_seen, gw.status);
 
     res.json({
       success: true,
@@ -101,7 +122,7 @@ router.get('/:gatewayId', async (req, res, next) => {
         gatewayName: gw.name,
         timestamp: gw.last_seen || gw.updated_at,
         gateway: {
-          status: gw.status || 'online',
+          status: gwStatus,
           pumpStatus: gw.pump_status !== undefined ? gw.pump_status : false,
           waterLevel: gw.water_level !== undefined ? gw.water_level : 0,
           battery: gw.battery !== undefined ? gw.battery : 100,
@@ -110,11 +131,13 @@ router.get('/:gatewayId', async (req, res, next) => {
         nodes: nodes.map(n => ({
           nodeId: n.id,
           cropName: n.crop_name,
-          status: n.status || 'online',
-          soilMoisture: n.soil_moisture !== undefined ? n.soil_moisture : 0,
+          status: computeStatus(n.last_seen, n.status),
+          soilMoisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
+          soil_moisture: n.soil_moisture !== undefined ? n.soil_moisture : (n.soilMoisture !== undefined ? n.soilMoisture : 0),
           temperature: n.temperature !== undefined ? n.temperature : 0,
           humidity: n.humidity !== undefined ? n.humidity : 0,
-          valveStatus: n.valve_status !== undefined ? n.valve_status : false,
+          valveStatus: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
+          valve_status: n.valve_status !== undefined ? n.valve_status : (n.valveStatus !== undefined ? n.valveStatus : false),
           battery: n.battery !== undefined ? n.battery : 100,
           lastSeen: n.last_seen
         }))

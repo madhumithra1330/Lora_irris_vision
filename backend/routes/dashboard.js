@@ -4,6 +4,19 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Stale timeout for online/offline determination (45 seconds = 3x firmware transmission rate)
+const STALE_TIMEOUT_MS = 45 * 1000;
+
+function computeStatus(lastSeen, reportedStatus) {
+  if (!lastSeen) return 'offline';
+  const lastSeenMs = new Date(lastSeen).getTime();
+  if (isNaN(lastSeenMs)) return 'offline';
+  if (Date.now() - lastSeenMs > STALE_TIMEOUT_MS) {
+    return 'offline';
+  }
+  return reportedStatus === 'offline' ? 'offline' : 'online';
+}
+
 /**
  * GET /api/dashboard/:gatewayId
  * Fetch full dashboard snapshot for a specific gateway.
@@ -45,26 +58,27 @@ router.get('/:gatewayId', requireAuth, async (req, res, next) => {
     }
 
     const connectedNodes = await db.getNodesByGateway(gatewayId);
+    const gwStatus = computeStatus(gw.last_seen, gw.status);
 
     // Build the expected response shape
     const responseData = {
       gateway: {
         gatewayId: gw.id,
         gatewayName: gw.name,
-        status: gw.status || 'online',
+        status: gwStatus,
         lastSeen: gw.last_seen
       },
       gatewayMetrics: {
         pumpStatus: gw.pump_status !== undefined ? gw.pump_status : false,
         waterLevel: gw.water_level !== undefined ? gw.water_level : 0,
         battery: gw.battery !== undefined ? gw.battery : 100,
-        gatewayStatus: gw.status || 'online',
-        recordedAt: gw.updated_at || gw.last_seen
+        gatewayStatus: gwStatus,
+        recordedAt: gw.last_seen || gw.updated_at
       },
       nodes: connectedNodes.map(node => ({
         nodeId: node.id,
         cropName: node.crop_name,
-        status: node.status || 'online',
+        status: computeStatus(node.last_seen, node.status),
         soilMoisture: node.soil_moisture !== undefined ? node.soil_moisture : node.soilMoisture,
         soil_moisture: node.soil_moisture !== undefined ? node.soil_moisture : node.soilMoisture,
         temperature: node.temperature !== undefined ? node.temperature : 0,
@@ -72,8 +86,9 @@ router.get('/:gatewayId', requireAuth, async (req, res, next) => {
         valveStatus: node.valve_status !== undefined ? node.valve_status : node.valveStatus,
         valve_status: node.valve_status !== undefined ? node.valve_status : node.valveStatus,
         battery: node.battery !== undefined ? node.battery : 100,
-        recordedAt: node.updated_at || node.last_seen,
-        recorded_at: node.updated_at || node.last_seen
+        recordedAt: node.last_seen || node.updated_at,
+        recorded_at: node.last_seen || node.updated_at,
+        lastSeen: node.last_seen
       })),
       nodeCount: connectedNodes.length
     };

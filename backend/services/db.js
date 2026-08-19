@@ -173,63 +173,28 @@ export class DataStore {
   }
 
   async getGatewayById(id) {
+    let dbGw = null;
     try {
       const { data, error } = await supabase.from('gateways').select('*').eq('id', id).single();
       if (!error && data) {
+        dbGw = data;
         this.memoryGateways.set(id, data);
-        return data;
       }
     } catch (_) {}
-    return this.memoryGateways.get(id) || null;
-  }
-
-  async claimGateway(gatewayId, farmerId) {
-    const updates = { farmer_id: farmerId, updated_at: new Date().toISOString() };
-    try {
-      const { data, error } = await supabase.from('gateways').update(updates).eq('id', gatewayId).select().single();
-      if (!error && data) {
-        this.memoryGateways.set(gatewayId, data);
-        return data;
-      }
-    } catch (_) {}
-    const gw = this.memoryGateways.get(gatewayId);
-    if (gw) {
-      const updated = { ...gw, ...updates };
-      this.memoryGateways.set(gatewayId, updated);
-      return updated;
-    }
-    return null;
-  }
-
-  async createGateway(gatewayData) {
-    const newGw = {
-      id: gatewayData.id,
-      name: gatewayData.name || `Gateway ${gatewayData.id}`,
-      secret: gatewayData.secret,
-      farmer_id: gatewayData.farmer_id || null,
-      status: gatewayData.status || 'online',
-      pump_status: gatewayData.pump_status !== undefined ? gatewayData.pump_status : false,
-      water_level: gatewayData.water_level !== undefined ? gatewayData.water_level : 0,
-      battery: gatewayData.battery !== undefined ? gatewayData.battery : 100,
-      firmware: gatewayData.firmware || '1.0.0',
-      location: gatewayData.location || null,
-      last_seen: gatewayData.last_seen || new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    try {
-      const { data, error } = await supabase.from('gateways').upsert(newGw).select().single();
-      if (!error && data) {
-        this.memoryGateways.set(data.id, data);
-        return data;
-      }
-    } catch (_) {}
-    this.memoryGateways.set(newGw.id, newGw);
-    return newGw;
+    const memGw = this.memoryGateways.get(id);
+    if (!dbGw) return memGw || null;
+    if (!memGw) return dbGw;
+    const memTime = new Date(memGw.last_seen || memGw.updated_at || 0).getTime();
+    const dbTime = new Date(dbGw.last_seen || dbGw.updated_at || 0).getTime();
+    return memTime >= dbTime ? memGw : dbGw;
   }
 
   async updateGateway(id, updates) {
     const updatedPayload = { ...updates, updated_at: new Date().toISOString() };
+    const existing = this.memoryGateways.get(id);
+    const inMem = existing ? { ...existing, ...updatedPayload } : { id, ...updatedPayload };
+    this.memoryGateways.set(id, inMem);
+
     try {
       const { data, error } = await supabase.from('gateways').update(updatedPayload).eq('id', id).select().single();
       if (!error && data) {
@@ -237,37 +202,56 @@ export class DataStore {
         return data;
       }
     } catch (_) {}
-    const existing = this.memoryGateways.get(id);
-    if (existing) {
-      const updated = { ...existing, ...updatedPayload };
-      this.memoryGateways.set(id, updated);
-      return updated;
-    }
-    return null;
+    return inMem;
   }
 
   // ── Node lookups ──
   async getNodesByGateway(gatewayId) {
+    let dbData = [];
     try {
       const { data, error } = await supabase.from('nodes').select('*').eq('gateway_id', gatewayId);
-      if (!error && data && data.length > 0) return data;
+      if (!error && data && data.length > 0) {
+        dbData = data;
+      }
     } catch (_) {}
+
     const matched = [];
-    for (const n of this.memoryNodes.values()) {
-      if (n.gateway_id === gatewayId) matched.push(n);
+    const dbMap = new Map(dbData.map(n => [n.id, n]));
+
+    for (const memNode of this.memoryNodes.values()) {
+      if (memNode.gateway_id === gatewayId) {
+        const dbNode = dbMap.get(memNode.id);
+        if (dbNode) {
+          const memTime = new Date(memNode.last_seen || memNode.updated_at || 0).getTime();
+          const dbTime = new Date(dbNode.last_seen || dbNode.updated_at || 0).getTime();
+          matched.push(memTime >= dbTime ? memNode : dbNode);
+          dbMap.delete(memNode.id);
+        } else {
+          matched.push(memNode);
+        }
+      }
+    }
+    for (const remainingDb of dbMap.values()) {
+      matched.push(remainingDb);
     }
     return matched;
   }
 
   async getNodeById(id) {
+    let dbNode = null;
     try {
       const { data, error } = await supabase.from('nodes').select('*').eq('id', id).single();
       if (!error && data) {
+        dbNode = data;
         this.memoryNodes.set(id, data);
-        return data;
       }
     } catch (_) {}
-    return this.memoryNodes.get(id) || null;
+    const memNode = this.memoryNodes.get(id);
+    if (!dbNode) return memNode || null;
+    if (!memNode) return dbNode;
+    const memTime = new Date(memNode.last_seen || memNode.updated_at || 0).getTime();
+    const dbTime = new Date(dbNode.last_seen || dbNode.updated_at || 0).getTime();
+    return memTime >= dbTime ? memNode : dbNode;
   }
 
   async createNode(nodeData) {
@@ -285,6 +269,7 @@ export class DataStore {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+    this.memoryNodes.set(newNode.id, newNode);
     try {
       const { data, error } = await supabase.from('nodes').upsert(newNode).select().single();
       if (!error && data) {
@@ -292,12 +277,15 @@ export class DataStore {
         return data;
       }
     } catch (_) {}
-    this.memoryNodes.set(newNode.id, newNode);
     return newNode;
   }
 
   async updateNode(id, updates) {
     const updatedPayload = { ...updates, updated_at: new Date().toISOString() };
+    const existing = this.memoryNodes.get(id);
+    const inMem = existing ? { ...existing, ...updatedPayload } : { id, ...updatedPayload };
+    this.memoryNodes.set(id, inMem);
+
     try {
       const { data, error } = await supabase.from('nodes').update(updatedPayload).eq('id', id).select().single();
       if (!error && data) {
@@ -305,13 +293,7 @@ export class DataStore {
         return data;
       }
     } catch (_) {}
-    const existing = this.memoryNodes.get(id);
-    if (existing) {
-      const updated = { ...existing, ...updatedPayload };
-      this.memoryNodes.set(id, updated);
-      return updated;
-    }
-    return null;
+    return inMem;
   }
 
   // ── Sensor history ──

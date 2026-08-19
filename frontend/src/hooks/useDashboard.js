@@ -72,7 +72,10 @@ export function useDashboard() {
     `${STORAGE_KEYS.DASHBOARD}-${gatewayId}`,
     ['dashboard', gatewayId],
     queryFn,
-    { enabled: !!gatewayId || demoService.isDemoMode() }
+    { 
+      enabled: !!gatewayId || demoService.isDemoMode(),
+      refetchInterval: 10000,
+    }
   );
 
   // Handle gateway:update socket events
